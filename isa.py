@@ -16,14 +16,19 @@ def ISA(V0, A, B, eps = 0.0):
     while not isInvariant:
         iteration += 1;
         print ("--------------in interation ", iteration);
+#        print (Vt)
+#        print (sumS(Vt, B))
         Ainved =  AinvV(A, sumS(Vt, B));
-        
+#        print (Ainved) 
         Vnext = intersect(K, Ainved);
         print ("rank of Vt ", rank(Vt));
         print ("rank of Vnext ", rank(Vnext));
         print ("Vnext is contaned in Vt ", contained(Vnext, Vt));
         if rank(Vnext) == rank(Vt):
             isInvariant = True;
+            print ("ISA returns-----")
+            print (Vnext);
+            print (Vt);
             
         else:
             Vt = Vnext;
@@ -45,7 +50,11 @@ Return kernel of input matrix
 def ker(A, eps = 1e-14):
     U,D, V = la.svd(A);
     r = rank(A, eps);
-    return V[r:, :].T
+    m,n = V.shape
+    if r == m:
+        return np.zeros(V.T.shape)
+    else:
+        return V[r:, :].T
 #----------------------------------------------------------------------------#
 """
 The range of input matrix
@@ -77,9 +86,10 @@ Calculates subspace A^{-1}(im(V))
     by noting that (A^{-1}im(V)) = ker((A^Tker(V.T)).T)
 """
 def AinvV(A, V):
-    kerV = ker(V.T);
 #    print ("In AinvV")
-#    print (kerV)
+#    print (V)
+    kerV = ker(V.T);
+    
     AtV = A.T.dot(kerV);
     return ker(AtV.T);
 #----------------------------------------------------------------------------#
@@ -106,20 +116,20 @@ def contained(A,B):
 #        print (cap)
         return False;
     
-N = 50;
-halfN = 48;
-B =  np.random.rand(N,4);
-#A = np.zeros((N,N)); A[:halfN, :halfN] = np.eye(halfN);
-#A[halfN:, halfN:]  = np.random.rand(N -halfN,N -halfN)
-A = np.eye(N)
-V = np.zeros((N,3)); V[0,0] = 1.;V[1,1] = 1.;
-U = np.zeros((N,2)); U[0,0] = 1;
-
-K = ker(B.T);
-#K = np.random.rand(N,2);
-#print (intersect(K, B));
-invariantSub = (ISA(ker(K.T), -A.dot(A.T), B));
-print (contained(B, invariantSub))
+#N = 50;
+#halfN = 48;
+#B =  np.random.rand(N,4);
+##A = np.zeros((N,N)); A[:halfN, :halfN] = np.eye(halfN);
+##A[halfN:, halfN:]  = np.random.rand(N -halfN,N -halfN)
+#A = np.eye(N)
+#V = np.zeros((N,3)); V[0,0] = 1.;V[1,1] = 1.;
+#U = np.zeros((N,2)); U[0,0] = 1;
+#
+#K = ker(B.T);
+##K = np.random.rand(N,2);
+##print (intersect(K, B));
+#invariantSub = (ISA(ker(K.T), -A.dot(A.T), B));
+#print (contained(B, invariantSub))
 #if rank(image(B)) == rank(intersect(B, invariantSub)):
 #    print ("can be disturbance decoupled");
 #else: 
