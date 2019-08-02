@@ -9,6 +9,7 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 import util as ut
+import isa as isa
 
 plt.close('all');
 n = 4;
@@ -65,3 +66,20 @@ xTraj = ut.runGradient(0.99*barA, x0,int(T));
 plt.figure();
 plt.plot(timeLine, xTraj.T);
 plt.show();
+
+#------------------ DISTURBANCE -------------------
+E  = np.array([1,0,0,0]);
+C = np.array([0,0,0,1]);
+B = np.array([0,0,1,0]);
+
+barE = np.zeros((n*N, N)); barC = np.zeros((N,n*N)); barB = np.zeros((n*N,N))
+for i in range(N):
+    barE[n*i:(i+1)*n, i] = E;
+    barC[i, n*i:(i+1)*n] = C;
+    barB[n*i:(i+1)*n, i] =  B;
+invariantSub = isa.ISA(isa.ker(barC), barA, barB)
+
+if (isa.contained(barE, invariantSub)):
+    print ("disturbance decouplable");
+else:
+    print ("not disturbance decouplable");
