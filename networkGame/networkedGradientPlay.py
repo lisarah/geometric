@@ -62,8 +62,9 @@ print (w)
 T = int(1e3);
 x0 = np.random.rand((n*N));
 timeLine = np.linspace(1,T ,T)
-xTraj = ut.runGradient(0.99*barA, x0,int(T));
+xTraj = ut.runGradient(0.99*barA, x0,T=int(T));
 plt.figure();
+plt.title("no noise, check if these step sizes converges")
 plt.plot(timeLine, xTraj.T);
 plt.show();
 
@@ -87,5 +88,45 @@ else:
     
 # if decouplable we do the next step: 
 F = dd.ddController(invariantSub, barA, barB);
-print (F)
-print (barC.dot(barA+barB.dot(F)).dot(barE))
+#print (F)
+#print (barC.dot(barA+barB.dot(F)).dot(barE))
+
+# -------------------simulate the system again-------------------
+T = int(1e3);
+#x0 = np.random.rand((n*N));
+timeLine = np.linspace(1,T ,T)
+xTraj = ut.runGradient((0.99*barA + barB.dot(F)), x0, T= int(T));
+plt.figure();
+plt.title("simulated the disturbance decoupled closed loop without noise")
+plt.plot(timeLine, xTraj.T);
+plt.show();
+
+
+# if decouplable we do the next step: 
+F = dd.ddController(invariantSub, barA, barB);
+#print (F)
+#print (barC.dot(barA+barB.dot(F)).dot(barE))
+
+##---------- simulate noisy version -----------------------
+T = int(1e3);
+
+timeLine = np.linspace(1,T ,T);
+w = np.random.rand(9,T);
+
+xTraj = ut.runGradient((0.99*barA + barB.dot(F)), x0, barE.dot(w), int(T));
+plt.figure();
+plt.title("simulate the DD closed loop WIth Noise");
+plt.plot(timeLine, xTraj.T );
+plt.show();
+
+##---------- simulate noisy version without feedback control -----------------------
+T = int(1e3);
+
+timeLine = np.linspace(1,T ,T);
+#w = np.random.rand(9,T);
+
+xTraj = ut.runGradient((0.99*barA), x0, noise = barE.dot(w), T = int(T));
+plt.figure();
+plt.title("simulate the not DDed with NOISE")
+plt.plot(timeLine, xTraj.T );
+plt.show();

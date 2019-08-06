@@ -13,7 +13,7 @@ def truncate(mat, eps = 1e-10):
         if mat[i] <= eps:
             mat[i] = 0;
 
-def runGradient(A, x0, T = 1000):
+def runGradient(A, x0, noise=None, T=1000):
     n  = x0.shape;
     xHist = np.zeros((n[0], T));
     for t in range(T):
@@ -21,5 +21,8 @@ def runGradient(A, x0, T = 1000):
             xHist[:,0] = x0;
         else:
             xHist[:, t] = A.dot(xHist[:, t-1]);
+
+        if noise is not None:
+            xHist[:,t] = noise[:,t] + xHist[:,t];
     return xHist;
         
