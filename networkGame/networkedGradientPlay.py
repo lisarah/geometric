@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import util as ut
 import isa as isa
-
+import decouplingController as dd
 plt.close('all');
 n = 4;
 Qii = np.array([[0, 1, 0, 0], [1, 0, 0, 1], [1, 1, 0, 0], [0, 0, 1, 0]]);
@@ -83,3 +83,9 @@ if (isa.contained(barE, invariantSub)):
     print ("disturbance decouplable");
 else:
     print ("not disturbance decouplable");
+    
+    
+# if decouplable we do the next step: 
+F = dd.ddController(invariantSub, barA, barB);
+print (F)
+print (barC.dot(barA+barB.dot(F)).dot(barE))
