@@ -34,8 +34,9 @@ Gamma = np.eye(N*n);
 
 for i in range(N):
     print ("in agent ", i);
-    diagNorm = np.multiply(np.random.rand(4,4),Qii);
-    Q[i*n:(i+1)*n, i*n:(i+1)*n] = diagNorm + diagNorm.T;
+    randMat = np.random.rand(4,4);
+
+    Q[i*n:(i+1)*n, i*n:(i+1)*n] = np.multiply(Qii + Qii.T, np.multiply(randMat,randMat));
     
     w,v = np.linalg.eig(Q[i*n:(i+1)*n, i*n:(i+1)*n]);
     
