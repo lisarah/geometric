@@ -2,6 +2,8 @@
 """
 Created on Wed Aug 14 11:51:24 2019
 
+This game is a game played between two drones. 
+Where each drone attempts to track its own reference track and avoid each other
 @author: craba
 """
 import numpy as np
@@ -10,8 +12,8 @@ from mpl_toolkits import mplot3d
 plt.close('all')
 # drone cost functions
 N = 2;
-T = 20;
-A = np.eye(2); B = 0.41*np.eye(2);
+T = 50;
+A = np.eye(2); B = 0.48*np.eye(2);
 ref1 = np.zeros((2,T)); ref2 = np.zeros((2,T));
 ref1[0,:] = np.linspace(0, T, T,endpoint = False);
 ref2[0,:] = np.linspace(0, T, T, endpoint = False);
