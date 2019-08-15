@@ -9,15 +9,15 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 plt.close('all')
 # drone cost functions
-N = 3; # number of drones
+N = 4; # number of drones
 n = 2; # state space size of each drone
-T = 20;
+T = 5;
 A = np.eye(n,n); 
 B = 0.23*np.eye(n);
 ref = np.zeros((n*N,T));
 ref = np.random.rand(n*N)*10.;
 
-noise = np.random.rand(n,T)*2;
+noise = np.random.rand(n,T) - 0.5;
 #---------- game ------------------
 subStep  = 1;
 x = np.zeros((n*N,T*subStep));
@@ -49,24 +49,25 @@ wL, eigL = np.linalg.eig(L);
 print (wL);
 #--------------propogating dynamics -----------------#
 for t in range(T*subStep):
-    refInd  = int(t/subStep);
     if t == 0:
         x[:,0] = np.random.rand(n*N)*3;
+
     else: 
-        x[:,t] = L.dot(x[:,t-1]);
+        x[:,t] = L.dot(noisyx[:,t-1]);
         c= gamma.dot(diagA).dot(ref);
         x[:,t] += c;
         # noise
     noisyx[:,t] = 1.0*x[:,t];
-    noisyx[3:3+n, t] += noise[:,t];
+    noisyx[0:n, t] += noise[:,t];
 plt.figure();
 ax = plt.axes(projection='3d')
 # Data for a three-dimensional line
 zline = np.linspace(0, T*subStep, T*subStep, endpoint = False)
 
 for i in range(N):
-    ax.plot3D(x[i,:],  x[i+1,:], zline);
-    ax.plot3D(noisyx[i,:],  noisyx[i+1,:], zline, '--');
+    ax.plot3D(x[i*n,:],  x[n*i+1,:], zline);
+    ax.plot3D(noisyx[i*n,:],  noisyx[n*i+1,:], zline, '--');
+#    print(n*i, "   ", n*i+1)
 
 plt.show();
 
