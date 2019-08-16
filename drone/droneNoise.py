@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug 15 10:19:16 2019
+Created on Fri Aug 16 12:29:43 2019
 
 @author: craba
 """
@@ -42,49 +42,21 @@ def droneDyn(graph, couplingCoeff, N, n):
 # drone cost functions
 N = 4; # number of drones
 n = 2; # state space size of each drone
-T = 1000;
+T = 200;
 A = np.eye(n,n); 
-B = 0.24*np.eye(n);
 ref = np.zeros((n*N,T));
 ref = np.random.rand(n*N)*2.;
 
 
 noise = np.random.rand(n,T) - 0.5;
-#---------- game ------------------
+#---------- game graph ------------------
 completeGraph = np.ones((N,N)) - np.eye(N);
 uncoupledGraph = np.zeros((N,N));
 k4Graph= np.tril(np.ones((N,N)), k = -1);
-lineGraph = np.zeros((N,N)); lineGraph[1:4, 0:3] = np.eye(N-1);
-L, completeGamma = droneDyn(completeGraph,0.2, N, n);
+
+L, completeGamma = droneDyn(completeGraph,0.15, N, n);
 uncoupledL, uncoupledGamma = droneDyn(uncoupledGraph, 0.04, N,n);
-k4L, k4Gamma = droneDyn(k4Graph, 0.33, N,n);
-lineL, lineGamma = droneDyn(lineGraph, 0.4, N, n);
-#DW = np.eye(n*N);
-#uncoupleDW = np.eye(n*N);
-## Complete graph
-#for i in range(N):
-#    DW[n*i:n*(i+1), n*i:n*(i+1)] = (A + A.T); # 
-#    uncoupleDW[n*i:n*(i+1), n*i:n*(i+1)] = (A + A.T); # 
-##    print DW[i:2+i]
-#    for j in range(N):
-#        if j != i:            
-#            DW[n*i:n*(i+1), n*i:n*(i+1)] += -(B + B.T); 
-#            if j < i:
-#                DW[n*i:n*(i+1), n*j:n*(1+j)] = B+B.T;
-#                DW[n*j:n*(1+j), n*i:n*(i+1)] = (B + B.T);
-## step sizes
-#w, eigVecs = np.linalg.eig(0.25*(DW + DW.T).T.dot(DW + DW.T));
-#alpha = np.min(w);
-#w2, eigVecs = np.linalg.eig(DW.T.dot(DW));
-#beta = np.max(w);
-#gamma = np.eye(n*N)*alpha/beta; 
-#
-##gamma[0,0] = gamma[0,0] / 2;
-##gamma[1,1] = gamma[1,1] / 2;
-#L= np.eye(n*N) - gamma.dot(DW);
-#uncoupledL = np.eye(n*N) - gamma.dot(uncoupleDW);
-#wL, eigL = np.linalg.eig(L);
-#print (wL);
+k4L, k4Gamma = droneDyn(k4Graph, 0.15, N,n);
 
 diagA = np.zeros((n*N, n*N));
 for i in range(N):
@@ -93,31 +65,32 @@ for i in range(N):
 #--------------propogating dynamics -----------------#
 subStep  = 1;
 x = np.zeros((n*N,T*subStep),dtype=np.complex_);
-#noisyx = np.zeros((n*N, T*subStep),dtype=np.complex_);
-uncoupledX= np.zeros((n*N, T*subStep), dtype=np.complex_);
 k4x =  np.zeros((n*N, T*subStep), dtype=np.complex_);
+
+noisyx = np.zeros((n*N, T*subStep),dtype=np.complex_);
+uncoupledX= np.zeros((n*N, T*subStep), dtype=np.complex_);
 linex =  np.zeros((n*N, T*subStep), dtype=np.complex_);
+
 for t in range(T*subStep):
     if t == 0:
         x[:,0] = np.random.rand(n*N)*3;
-#        noisyx[:,0] = 1.0*x[:,0];
+        noisyx[:,0] = 1.0*x[:,0];
         uncoupledX[:,0] = 1.0*x[:,0];
         k4x[:,0] = 1.0*x[:,0];
-        linex[:, 0] = 1.0*x[:,0];
+
     else: 
         x[:,t] = L.dot(x[:,t-1]);
         uncoupledX[:,t] = uncoupledL.dot(uncoupledX[:, t-1]);
-#        noisyx[:,t] = L.dot(noisyx[:,t-1]);
         k4x[:,t] = k4L.dot(k4x[:,t-1]);
-        linex[:,t] = lineL.dot(linex[:,t-1])
-        c= completeGamma.dot(diagA).dot(ref);
-        x[:,t] += (c);
-#        noisyx[:,t] += (c);
-        uncoupledX[:,t] += uncoupledGamma.dot(diagA).dot(ref);
+        noisyx[:,t] = k4L.dot(noisyx[:,t-1]);
+ 
+        x[:,t] += completeGamma.dot(diagA).dot(ref);
         k4x[:,t] += k4Gamma.dot(diagA).dot(ref);
-        linex[:,t] += lineGamma.dot(diagA).dot(ref);
+        noisyx[:,t] += k4Gamma.dot(diagA).dot(ref);
+        uncoupledX[:,t] += uncoupledGamma.dot(diagA).dot(ref);
+
     # noise
-#    noisyx[4:4+n, t] += noise[:,t];
+    noisyx[4:4+n, t] += noise[:,t];
 plt.figure();
 ax = plt.axes(projection='3d')
 # Data for a three-dimensional line
@@ -125,10 +98,11 @@ zline = np.linspace(0, T*subStep, T*subStep, endpoint = False)
 
 for i in range(N):
 #    ax.scatter(uncoupledX[i*n,:].real,  uncoupledX[n*i+1,:].real, zline, label = 'uncoupled '+str(i+1));
-#    ax.plot3D(k4x[i*n,:].real, k4x[i*n+1,:].real, zline, '--', label = 'k4 '+str(i+1));
-    ax.plot3D(x[i*n,:].real,  x[n*i+1,:].real, zline, label = 'complete '+str(i+1));
-#    ax.plot3D(linex[i*n,:].real,  linex[n*i+1,:].real, zline, ':',label = 'line '+str(i+1));
-#    ax.plot3D(noisyx[i*n,:].real,  noisyx[n*i+1,:].real, zline, '--',label =str(i+1));
+    ax.scatter(k4x[i*n,:].real, k4x[i*n+1,:].real, zline, '--', label = 'k4 '+str(i+1));
+
+#    ax.plot3D(x[i*n,:].real,  x[n*i+1,:].real, zline, label = 'complete '+str(i+1));
+
+    ax.plot3D(noisyx[i*n,:].real,  noisyx[n*i+1,:].real, zline, '--',label ='noisy '+str(i+1));
 #    print(n*i, "   ", n*i+1)
 plt.legend();
 plt.show();
