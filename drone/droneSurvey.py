@@ -11,7 +11,7 @@ plt.close('all')
 # drone cost functions
 N = 4; # number of drones
 n = 2; # state space size of each drone
-T = 5;
+T = 50;
 A = np.eye(n,n); 
 B = 0.23*np.eye(n);
 ref = np.zeros((n*N,T));
@@ -51,23 +51,24 @@ print (wL);
 for t in range(T*subStep):
     if t == 0:
         x[:,0] = np.random.rand(n*N)*3;
-
+        noisyx[:,0] = 1.0*x[:,0];
     else: 
-        x[:,t] = L.dot(noisyx[:,t-1]);
+        x[:,t] = L.dot(x[:,t-1]);
+        noisyx[:,t] = L.dot(noisyx[:,t-1]);
         c= gamma.dot(diagA).dot(ref);
         x[:,t] += c;
-        # noise
-    noisyx[:,t] = 1.0*x[:,t];
-    noisyx[0:n, t] += noise[:,t];
+        noisyx[:,t] += c;
+    # noise
+    noisyx[4:4+n, t] += noise[:,t];
 plt.figure();
 ax = plt.axes(projection='3d')
 # Data for a three-dimensional line
 zline = np.linspace(0, T*subStep, T*subStep, endpoint = False)
 
 for i in range(N):
-    ax.plot3D(x[i*n,:],  x[n*i+1,:], zline);
-    ax.plot3D(noisyx[i*n,:],  noisyx[n*i+1,:], zline, '--');
+    ax.plot3D(x[i*n,:],  x[n*i+1,:], zline, label = str(i+1));
+    ax.plot3D(noisyx[i*n,:],  noisyx[n*i+1,:], zline, '--',label =str(i+1));
 #    print(n*i, "   ", n*i+1)
-
+plt.legend();
 plt.show();
 
