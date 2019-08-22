@@ -40,9 +40,10 @@ def droneDyn(graph, couplingCoeff, N, n):
     return L, gamma;
 
 # drone cost functions
-N = 4; # number of drones
+N = 5; # number of drones
 n = 2; # state space size of each drone
 T = 1000;
+noiseBound = 3.;
 A = np.eye(n,n); 
 B = 0.24*np.eye(n);
 ref = np.zeros((n*N,T));
@@ -54,7 +55,7 @@ noise = np.random.rand(n,T) - 0.5;
 completeGraph = np.ones((N,N)) - np.eye(N);
 uncoupledGraph = np.zeros((N,N));
 k4Graph= np.tril(np.ones((N,N)), k = -1);
-lineGraph = np.zeros((N,N)); lineGraph[1:4, 0:3] = np.eye(N-1);
+lineGraph = np.zeros((N,N)); lineGraph[1:N, 0:N-1] = np.eye(N-1);
 L, completeGamma = droneDyn(completeGraph,0.2, N, n);
 uncoupledL, uncoupledGamma = droneDyn(uncoupledGraph, 0.04, N,n);
 k4L, k4Gamma = droneDyn(k4Graph, 0.33, N,n);
@@ -99,7 +100,7 @@ k4x =  np.zeros((n*N, T*subStep), dtype=np.complex_);
 linex =  np.zeros((n*N, T*subStep), dtype=np.complex_);
 for t in range(T*subStep):
     if t == 0:
-        x[:,0] = np.random.rand(n*N)*3;
+        x[:,0] = np.random.rand(n*N)*noiseBound;
 #        noisyx[:,0] = 1.0*x[:,0];
         uncoupledX[:,0] = 1.0*x[:,0];
         k4x[:,0] = 1.0*x[:,0];
