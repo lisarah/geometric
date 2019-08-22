@@ -7,6 +7,7 @@ Created on Fri Aug 16 12:29:43 2019
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+import networkx as nx
 plt.close('all')
 
 def droneDyn(graph, couplingCoeff, N, n):
@@ -30,35 +31,46 @@ def droneDyn(graph, couplingCoeff, N, n):
     w, eigVecs = np.linalg.eig(0.25*(DW + DW.T).T.dot(DW + DW.T));
     alpha = np.min(w);
     w2, eigVecs = np.linalg.eig(DW.T.dot(DW));
-    beta = np.max(w);
+    beta = np.max(w2);
     gamma = np.eye(n*N)*alpha/beta; 
     if alpha == beta:
         gamma = gamma*couplingCoeff;
     L= np.eye(n*N) - gamma.dot(DW);
     wL, eigL = np.linalg.eig(L);
     print (wL);
+    print ("Beta: ", beta)
+    print ("Alpha: ", alpha);
     return L, gamma;
 
 # drone cost functions
-N = 10; # number of drones
+N = 5; # number of drones
 n = 2; # state space size of each drone
 T = 1000;
-noiseBound = 2.;
+noiseBound = 0.7;
 A = np.eye(n,n); 
-ref = np.zeros((n*N,T));
-ref = np.random.rand(n*N)*2.;
+ref = np.random.rand(n*N)*5.;
 
-
-noise = np.random.rand(n,T)*noiseBound - 0.5;
+noise = np.random.rand(n,T)*noiseBound - noiseBound/2.;
 #---------- game graph ------------------
-completeGraph = np.ones((N,N)) - np.eye(N);
-uncoupledGraph = np.zeros((N,N));
 k4Graph= np.tril(np.ones((N,N)), k = -1);
 
-L, completeGamma = droneDyn(completeGraph,0.09, N, n);
-uncoupledL, uncoupledGamma = droneDyn(uncoupledGraph, 0.04, N,n);
-k4L, k4Gamma = droneDyn(k4Graph, 0.09, N,n);
+print ("K4 graph");
+k4L, k4Gamma = droneDyn(k4Graph, 0.18, N,n);
+G = nx.DiGraph();
+#G.add_nodes_from(np.linspace(1,N,num=N));
+for i in range(N):
+    for j in range(N):
+        if i == j:
+            G.add_edge(i,j);
+        elif k4Graph[i,j] == 1:
+            G.add_edge(i,j);
 
+plt.figure();
+nx.draw_circular(G);
+nx.draw_networkx_nodes(G,pos=nx.circular_layout(G), node_size=200)
+nx.draw_networkx_labels(G,pos=nx.circular_layout(G),font_size=15, font_color='w' )
+nx.draw_networkx_edges(G,pos=nx.circular_layout(G),arrows =True)
+plt.show();
 diagA = np.zeros((n*N, n*N));
 for i in range(N):
     diagA[i*n:(i+1)*n, i*n:(i+1)*n] = A + A.T;
@@ -67,28 +79,20 @@ for i in range(N):
 subStep  = 1;
 x = np.zeros((n*N,T*subStep),dtype=np.complex_);
 k4x =  np.zeros((n*N, T*subStep), dtype=np.complex_);
-
 noisyx = np.zeros((n*N, T*subStep),dtype=np.complex_);
-uncoupledX= np.zeros((n*N, T*subStep), dtype=np.complex_);
-linex =  np.zeros((n*N, T*subStep), dtype=np.complex_);
+
 
 for t in range(T*subStep):
     if t == 0:
-        x[:,0] = np.random.rand(n*N)*3.;
-        noisyx[:,0] = 1.0*x[:,0];
-        uncoupledX[:,0] = 1.0*x[:,0];
+        noisyx[:,0] = np.random.rand(n*N)*3.;
         k4x[:,0] = 1.0*x[:,0];
 
     else: 
-        x[:,t] = L.dot(x[:,t-1]);
-        uncoupledX[:,t] = uncoupledL.dot(uncoupledX[:, t-1]);
         k4x[:,t] = k4L.dot(k4x[:,t-1]);
         noisyx[:,t] = k4L.dot(noisyx[:,t-1]);
- 
-        x[:,t] += completeGamma.dot(diagA).dot(ref);
         k4x[:,t] += k4Gamma.dot(diagA).dot(ref);
         noisyx[:,t] += k4Gamma.dot(diagA).dot(ref);
-        uncoupledX[:,t] += uncoupledGamma.dot(diagA).dot(ref);
+
 
     # noise
     noisyx[4:4+n, t] += noise[:,t];
@@ -98,13 +102,20 @@ ax = plt.axes(projection='3d')
 zline = np.linspace(0, T*subStep, T*subStep, endpoint = False)
 
 for i in range(N):
-#    ax.scatter(uncoupledX[i*n,:].real,  uncoupledX[n*i+1,:].real, zline, label = 'uncoupled '+str(i+1));
-    ax.scatter(k4x[i*n,:].real, k4x[i*n+1,:].real, zline, '--', label = 'k4 '+str(i+1));
-
-#    ax.plot3D(x[i*n,:].real,  x[n*i+1,:].real, zline, label = 'complete '+str(i+1));
-
-    ax.plot3D(noisyx[i*n,:].real,  noisyx[n*i+1,:].real, zline, '--',label ='noisy '+str(i+1));
-#    print(n*i, "   ", n*i+1)
+    ax.scatter(k4x[i*n,:].real, k4x[i*n+1,:].real, zline, '--', label = str(i));
+    ax.plot3D(noisyx[i*n,:].real,  noisyx[n*i+1,:].real, zline, '--'); #,label ='noisy '+str(i+1)
 plt.legend();
 plt.show();
 
+
+# plot the distance of noise affected point to the NE
+plt.figure();
+for i in range(N):
+    plt.plot(np.sqrt(np.abs(noisyx[i*n, :] - k4x[i*n,:])**2 + np.abs(noisyx[i*n+1, :] - k4x[i*n+1,:])**2),
+             label = str(i));
+plt.xscale('log')
+plt.ylabel('log($\||x_n - x^\star {\||}_2)$')
+plt.xlabel('Iterations')
+plt.grid();
+plt.legend();
+plt.show();
