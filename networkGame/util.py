@@ -21,7 +21,10 @@ def truncate(mat, is2D = False, eps = 1e-10):
                 mat[i] = 0;
     return mat;
 
-def runGradient(A, x0, noise=None, T=1000):
+def runGradient(A, x0 = None, noise=None, T=1000):
+    if isinstance(x0,(np.ndarray)):
+        n,m = A.shape;
+        x0 = np.random.rand(n);
     n  = x0.shape;
     xHist = np.zeros((n[0], T));
     for t in range(T):
@@ -42,4 +45,13 @@ def fullGraph(A,E, C):
     R2 = np.zeros((m,n+m+y));
     R3 = np.concatenate((C, np.zeros((y,m+y))), axis = 1);
     return np.concatenate((R1, R2, R3));
+    
+def returnStepSize(J):
+    S = 0.5*(J + J.T);
+    w, e = np.linalg.eig(S.T.dot(S));
+    alpha = min(w);
+    w2, e2 = np.linalg.eig(J.T.dot(J));
+    beta = max(w2);
+    
+    return alpha, beta, alpha/beta;
     

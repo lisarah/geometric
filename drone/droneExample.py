@@ -113,6 +113,7 @@ plt.figure();
 for i in range(N):
     plt.plot(np.sqrt(np.abs(noisyx[i*n, :] - k4x[i*n,:])**2 + np.abs(noisyx[i*n+1, :] - k4x[i*n+1,:])**2),
              label = str(i));
+        
 plt.xscale('log')
 plt.ylabel('log($\||x_n - x^\star {\||}_2)$')
 plt.xlabel('Iterations')
