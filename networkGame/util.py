@@ -22,7 +22,7 @@ def truncate(mat, is2D = False, eps = 1e-10):
     return mat;
 
 def runGradient(A, x0 = None, noise=None, T=1000):
-    if isinstance(x0,(np.ndarray)):
+    if isinstance(x0,(np.ndarray)) == False:
         n,m = A.shape;
         x0 = np.random.rand(n);
     n  = x0.shape;

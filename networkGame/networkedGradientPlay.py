@@ -31,28 +31,29 @@ N,N = adjacency.shape;
 Q = np.zeros((N*n, N*n));
 normSum = np.zeros((N)); maxEig = np.zeros((N)); minEig = np.zeros((N))
 for i in range(N):
-    diagNorm = np.multiply(np.random.rand(4,4),Qii);
-    Q[i*n:(i+1)*n, i*n:(i+1)*n] = diagNorm + diagNorm.T;
-    
-    w,v = np.linalg.eig(Q[i*n:(i+1)*n, i*n:(i+1)*n]);
-    Q[i*n:(i+1)*n, i*n:(i+1)*n] = Q[i*n:(i+1)*n, i*n:(i+1)*n]/2./(abs(w[0])+1e-4);
-    maxEig[i] = w[0]; minEig[i] = w[n-1];
+    diagNorm = np.random.rand(4,4);
+#    Q[i*n:(i+1)*n, i*n:(i+1)*n] = diagNorm + diagNorm.T;
+    Q[i*n:(i+1)*n, i*n:(i+1)*n]  = diagNorm.T.dot(diagNorm)+ 7*np.eye(n); # 
+#    w,v = np.linalg.eig(Q[i*n:(i+1)*n, i*n:(i+1)*n]);
+#    Q[i*n:(i+1)*n, i*n:(i+1)*n] = Q[i*n:(i+1)*n, i*n:(i+1)*n]/2./(abs(w[0])+1e-4);
+#    maxEig[i] = w[0]; minEig[i] = w[n-1];
     
     neighbours, fet = np.where(adjacency[:,i] == 1);
     for neigh in neighbours: 
-        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] = np.multiply(np.random.rand(4,4),Qneighbour);
-        normSum[i] += np.linalg.norm(Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n], 2);
-    for neigh in neighbours:
-        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] =  Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n]/normSum[i]/2.;
+        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] = np.random.rand(4,4)*0.03 #np.multiply(,Qneighbour);
+#        normSum[i] += np.linalg.norm(Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n], 2);
+#    for neigh in neighbours:
+#        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] =  Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n]/100.;
 
 Gamma = np.eye(N*n);
 # step sizes----uniform Version
 S = 0.5*(Q + Q.T);
-u, s, vt = np.linalg.svd(S);
-ut.truncate(s);
-alpha = np.min(s[np.nonzero(s)]); 
-beta = np.linalg.norm(Q,2);
-gammai = alpha/(beta*beta);
+eigS, eigVecS = np.linalg.eig(S.T.dot(S));
+print (eigS);
+alpha = np.min(eigS); 
+eigQ, eigVecQ = np.linalg.eig(Q.T.dot(Q));
+beta = np.max(eigQ);
+gammai = np.sqrt(alpha)/beta;
 Gamma = gammai*Gamma;
 barA = np.eye(N*n)  - Gamma.dot(Q); 
 w, v = np.linalg.eig(barA);
@@ -62,71 +63,74 @@ print (w)
 T = int(1e3);
 x0 = np.random.rand((n*N));
 timeLine = np.linspace(1,T ,T)
-xTraj = ut.runGradient(0.99*barA, x0,T=int(T));
+xTraj = ut.runGradient(barA, x0 = x0,T=int(T));
 plt.figure();
 plt.title("no noise, check if these step sizes converges")
 plt.plot(timeLine, xTraj.T);
+plt.grid();
 plt.show();
 
 #------------------ DISTURBANCE -------------------
-E  = np.array([1,0,0,0]);
-C = np.array([0,0,0,1]);
-B = np.array([0,0,1,0]);
+E = np.zeros((n*N,N)); E[0] = 1.; E[1] = 1.;E[3] = 1.;E[3] = 1.;
+C = np.zeros(n*N); C[n*N -1] = 1.;
 
-barE = np.zeros((n*N, N)); barC = np.zeros((N,n*N)); barB = np.zeros((n*N,N))
-for i in range(N):
-    barE[n*i:(i+1)*n, i] = E;
-    barC[i, n*i:(i+1)*n] = C;
-    barB[n*i:(i+1)*n, i] =  B;
-invariantSub = isa.ISA(isa.ker(barC), barA, barB)
-
-if (isa.contained(barE, invariantSub)):
-    print ("disturbance decouplable");
-else:
-    print ("not disturbance decouplable");
-    
-    
-# if decouplable we do the next step: 
-F = dd.ddController(invariantSub, barA, barB);
+#B = np.array([0,0,1,0]);
+#
+barE = np.zeros((n*N, N)); barC = np.zeros((N,n*N)); #barB = np.zeros((n*N,N))
+#for i in range(N):
+#    barE[n*i:(i+1)*n, i] = E;
+#    barC[i, n*i:(i+1)*n] = C;
+#    barB[n*i:(i+1)*n, i] =  B;
+#invariantSub = isa.ISA(isa.ker(barC), barA, barB)
+#
+#if (isa.contained(barE, invariantSub)):
+#    print ("disturbance decouplable");
+#else:
+#    print ("not disturbance decouplable");
+#    
+#    
+## if decouplable we do the next step: 
+#F = dd.ddController(invariantSub, barA, barB);
 #print (F)
 #print (barC.dot(barA+barB.dot(F)).dot(barE))
 
 # -------------------simulate the system again-------------------
-T = int(1e3);
-#x0 = np.random.rand((n*N));
-timeLine = np.linspace(1,T ,T)
-xTraj = ut.runGradient((0.99*barA + barB.dot(F)), x0, T= int(T));
-plt.figure();
-plt.title("simulated the disturbance decoupled closed loop without noise")
-plt.plot(timeLine, xTraj.T);
-plt.show();
-
-
-# if decouplable we do the next step: 
-F = dd.ddController(invariantSub, barA, barB);
+#T = int(1e3);
+##x0 = np.random.rand((n*N));
+#timeLine = np.linspace(1,T ,T)
+#xTraj = ut.runGradient((0.99*barA + barB.dot(F)), x0, T= int(T));
+#plt.figure();
+#plt.title("simulated the disturbance decoupled closed loop without noise")
+#plt.plot(timeLine, xTraj.T);
+#plt.show();
+#
+#
+## if decouplable we do the next step: 
+#F = dd.ddController(invariantSub, barA, barB);
 #print (F)
 #print (barC.dot(barA+barB.dot(F)).dot(barE))
 
 ##---------- simulate noisy version -----------------------
-T = int(1e3);
-
-timeLine = np.linspace(1,T ,T);
-w = np.random.rand(9,T);
-
-xTraj = ut.runGradient((0.99*barA + barB.dot(F)), x0, barE.dot(w), int(T));
-plt.figure();
-plt.title("simulate the DD closed loop WIth Noise");
-plt.plot(timeLine, xTraj.T );
-plt.show();
+#T = int(1e3);
+#
+#timeLine = np.linspace(1,T ,T);
+#w = np.random.rand(9,T);
+#
+#xTraj = ut.runGradient((0.99*barA + barB.dot(F)), x0, barE.dot(w), int(T));
+#plt.figure();
+#plt.title("simulate the DD closed loop WIth Noise");
+#plt.plot(timeLine, xTraj.T );
+#plt.show();
 
 ##---------- simulate noisy version without feedback control -----------------------
 T = int(1e3);
 
 timeLine = np.linspace(1,T ,T);
-#w = np.random.rand(9,T);
+w = 0.01*(np.random.rand(N,T)+0.5);
 
-xTraj = ut.runGradient((0.99*barA), x0, noise = barE.dot(w), T = int(T));
+xTraj = ut.runGradient((barA), x0, noise = E.dot(w), T = int(T));
 plt.figure();
 plt.title("simulate the not DDed with NOISE")
+plt.grid();
 plt.plot(timeLine, xTraj.T );
 plt.show();
