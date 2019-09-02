@@ -23,18 +23,24 @@ def truncate(mat, is2D = False, eps = 1e-10):
 
 def runGradient(A, x0 = None, noise=None, T=1000):
     if isinstance(x0,(np.ndarray)) == False:
+        print("Found empty initial condition");
         n,m = A.shape;
         x0 = np.random.rand(n);
+    else:
+        print ("initial condition is given");
     n  = x0.shape;
     xHist = np.zeros((n[0], T));
     for t in range(T):
         if t == 0:
-            xHist[:,0] = x0;
+            xHist[:,0] = 1.*x0;
         else:
             xHist[:, t] = A.dot(xHist[:, t-1]);
 
         if noise is not None:
+#            print ("adding noise: ", noise[:,t]);
+#            prevHist = 1.0*xHist[:,t];
             xHist[:,t] = noise[:,t] + xHist[:,t];
+#            print ("difference in history: ", xHist[:,t] - prevHist);
     return xHist;
 
 def fullGraph(A,E, C):

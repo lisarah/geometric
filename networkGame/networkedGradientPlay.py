@@ -8,9 +8,11 @@ Created on Fri Jul 26 16:39:01 2019
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import importlib
 import util as ut
-import isa as isa
-import decouplingController as dd
+importlib.reload(ut)
+#import isa as isa
+#import decouplingController as dd
 plt.close('all');
 n = 4;
 Qii = np.array([[0, 1, 0, 0], [1, 0, 0, 1], [1, 1, 0, 0], [0, 0, 1, 0]]);
@@ -33,14 +35,14 @@ normSum = np.zeros((N)); maxEig = np.zeros((N)); minEig = np.zeros((N))
 for i in range(N):
     diagNorm = np.random.rand(4,4);
 #    Q[i*n:(i+1)*n, i*n:(i+1)*n] = diagNorm + diagNorm.T;
-    Q[i*n:(i+1)*n, i*n:(i+1)*n]  = diagNorm.T.dot(diagNorm)+ 7*np.eye(n); # 
+    Q[i*n:(i+1)*n, i*n:(i+1)*n]  = diagNorm.T.dot(diagNorm)+ 7*np.eye(n) ; #
 #    w,v = np.linalg.eig(Q[i*n:(i+1)*n, i*n:(i+1)*n]);
 #    Q[i*n:(i+1)*n, i*n:(i+1)*n] = Q[i*n:(i+1)*n, i*n:(i+1)*n]/2./(abs(w[0])+1e-4);
 #    maxEig[i] = w[0]; minEig[i] = w[n-1];
     
     neighbours, fet = np.where(adjacency[:,i] == 1);
     for neigh in neighbours: 
-        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] = np.random.rand(4,4)*0.03 #np.multiply(,Qneighbour);
+        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] = np.random.rand(4,4) #np.multiply(,Qneighbour);
 #        normSum[i] += np.linalg.norm(Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n], 2);
 #    for neigh in neighbours:
 #        Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n] =  Q[i*n:(i+1)*n, neigh*n:(neigh+1)*n]/100.;
@@ -53,25 +55,29 @@ print (eigS);
 alpha = np.min(eigS); 
 eigQ, eigVecQ = np.linalg.eig(Q.T.dot(Q));
 beta = np.max(eigQ);
-gammai = np.sqrt(alpha)/beta;
+#gammai = np.sqrt(alpha)/beta;
+gammai= alpha/beta;
 Gamma = gammai*Gamma;
 barA = np.eye(N*n)  - Gamma.dot(Q); 
 w, v = np.linalg.eig(barA);
 print (w)
 
 # simulate the system
-T = int(1e3);
+T = int(1e2);
 x0 = np.random.rand((n*N));
-timeLine = np.linspace(1,T ,T)
+timeLine = np.linspace(1,T ,T);
 xTraj = ut.runGradient(barA, x0 = x0,T=int(T));
 plt.figure();
 plt.title("no noise, check if these step sizes converges")
-plt.plot(timeLine, xTraj.T);
+for i in range(N):
+    iTraj = xTraj[i*n:(i+1)*n, :];
+    plt.plot(timeLine, np.linalg.norm(iTraj,ord = 2, axis =0), label =str(i+1));
+plt.legend();
 plt.grid();
 plt.show();
 
 #------------------ DISTURBANCE -------------------
-E = np.zeros((n*N,N)); E[0] = 1.; E[1] = 1.;E[3] = 1.;E[3] = 1.;
+E = np.zeros((n*N,N)); E[0] = 1.; E[1] = 1.;E[2] = 1.;E[3] = 1.;
 C = np.zeros(n*N); C[n*N -1] = 1.;
 
 #B = np.array([0,0,1,0]);
@@ -123,14 +129,28 @@ barE = np.zeros((n*N, N)); barC = np.zeros((N,n*N)); #barB = np.zeros((n*N,N))
 #plt.show();
 
 ##---------- simulate noisy version without feedback control -----------------------
-T = int(1e3);
+T = int(1e2);
 
 timeLine = np.linspace(1,T ,T);
-w = 0.01*(np.random.rand(N,T)+0.5);
+w = 0.1*(np.random.rand(N,T)-0.5);
+w = np.ones((N,T))*np.random.rand();
+xTraj = ut.runGradient((barA), x0, noise = gammai*E.dot(w), T = int(T));
 
-xTraj = ut.runGradient((barA), x0, noise = E.dot(w), T = int(T));
+noise = E.dot(w[:,0]);
+newEq = np.linalg.inv(Q).dot(noise);
 plt.figure();
-plt.title("simulate the not DDed with NOISE")
+plt.title("noisy multi-agent gradient learning dynamics")
 plt.grid();
-plt.plot(timeLine, xTraj.T );
+for i in range(N):
+    iTraj = xTraj[i*n:(i+1)*n, :];
+    iEq = np.linalg.norm(newEq[i*n:(i+1)*n],2);
+    plt.plot(timeLine, np.ones(T)*iEq, '--',linewidth=7.0, alpha = 0.5)
+    plt.plot(timeLine, np.linalg.norm(iTraj,ord = 2, axis =0), label =str(i+1));
+
+    
+plt.plot()
+plt.legend();
 plt.show();
+
+
+
