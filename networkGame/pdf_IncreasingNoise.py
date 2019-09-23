@@ -3,10 +3,12 @@
 Created on Mon Sep 16 16:52:44 2019
 
 @author: craba
+
+This file outputs figures for noise level vs strategy displacement from x_eq 
+for both linear and nonlinear dynamics
 """
 import numpy as np
 import util as ut
-import networkx as nx
 import matplotlib.pyplot as plt
 plt.close('all');
 N = 4;
@@ -32,7 +34,6 @@ ut.plot2D(linear);
 # generate noise NE -- linear dynamics
 # input noise is at player 1
 T = 1000; 
-halfT = int(T/2);
 noise = np.zeros((N*2,T));
 samples = 100;
 diff = np.zeros((N*2, samples));
@@ -76,7 +77,6 @@ x0 = np.random.rand(2*N);
 nonLinear = ut.runNonlinearGradient(nonLinearGrad, x0 = x0, T = T);
 ut.plot2D(nonLinear);
 #--------------------- noisy version ------------------------------#
-halfT = int(T/2);
 noise = np.zeros((N*2,T));
 samples = 100;
 diff = np.zeros((N*2, samples));

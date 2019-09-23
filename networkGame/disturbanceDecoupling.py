@@ -3,6 +3,8 @@
 Created on Fri Aug 23 12:10:11 2019
 
 @author: craba
+
+This is the original file for disturbance decoupling
 """
 
 import numpy as np
