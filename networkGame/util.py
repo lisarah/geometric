@@ -21,15 +21,15 @@ def truncate(mat, is2D = False, eps = 1e-10):
             if abs(mat[i]) <= eps:
                 mat[i] = 0;
     return mat;
-def runNonlinearGradient(func, x0, noise = None, T = 1000):
+def runNonlinearGradient(func, x0, noise = None, eps = 1.0, T = 1000):
 #    print ("----------- non linear gradient ---------");
-    n  = x0.shape;
+    n = x0.shape;
     xHist = np.zeros((n[0], T));
     for t in range(T):
         if t == 0:
             xHist[:,0] = 1.*x0;
         else:
-            xHist[:, t] = func(xHist[:, t-1]);
+            xHist[:, t] = func(xHist[:, t-1], eps);
 
         if noise is not None:
 #            print ("adding noise: ", noise[:,t]);
