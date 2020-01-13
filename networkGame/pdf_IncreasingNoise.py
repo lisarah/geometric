@@ -37,7 +37,7 @@ samples = 100;
 diff = np.zeros((N*2, samples));
 epsilon = np.zeros(samples);
 for sample in range(samples):
-    epsilon[sample] = sample*0.1;
+    epsilon[sample] = sample*100000.;
     noise[0:2,:] = epsilon[sample]*np.random.rand(2,T);
     
     linearNoisy = ut.runGradient(np.eye(2*N) - gamma*J,  
@@ -78,7 +78,7 @@ samples = 100;
 diff = np.zeros((N*2, samples));
 epsilon = np.zeros(samples);
 for sample in range(samples):
-    epsilon[sample] = sample*0.1;
+    epsilon[sample] = sample*10000.;
     noise[0:2,:] = epsilon[sample]*np.random.rand(2,T);
     
     nonLinearNoisy = ut.runNonlinearGradient(nonLinearGrad,  

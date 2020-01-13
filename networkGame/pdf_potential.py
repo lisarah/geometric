@@ -66,6 +66,7 @@ for sample in range(samples):
                                  x0 = x0, 
                                  noise = noise, 
                                  T = T, offset=c);
+    print (linearNoisy.shape)
     diff4[:, sample] = np.linalg.norm(linearNoisy - linear, axis = 1, ord = 2);
     
 
