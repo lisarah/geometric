@@ -6,4 +6,5 @@ WONHAM\ 2
 *.pdf
 *.svg
 *ipynb.checkpoints/*
+*.ipynb_checkpoints/*
 *.doc

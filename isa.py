@@ -8,6 +8,7 @@ import numpy as np
 import numpy.linalg as la
 import cvxpy as cvx
 import matplotlib.pyplot as plt
+import util as ut
 #np.random.seed(122323)
 #----------------------------------------------------------------------------#
 def ISA(V0, A, B, eps = 0.0):
@@ -23,10 +24,10 @@ def ISA(V0, A, B, eps = 0.0):
         Ainved =  AinvV(A, sumS(Vt, B));
 #        print (Ainved) 
         Vnext = intersect(K, Ainved);
-        print ("rank of Vt ", rank(Vt));
-        print ("rank of Vnext ", rank(Vnext));
+        print ("rank of Vt ", ut.rank(Vt));
+        print ("rank of Vnext ", ut.rank(Vnext));
         print ("Vnext is contained in Vt ", contained(Vnext, Vt));
-        if rank(Vnext) == rank(Vt):
+        if ut.rank(Vnext) == ut.rank(Vt):
             isInvariant = True;
             print ("ISA returns-----")
             print (Vnext);
@@ -37,12 +38,7 @@ def ISA(V0, A, B, eps = 0.0):
         
     return Vt
 #----------------------------------------------------------------------------#
-def rank(X, eps = 1e-14):
-    m,n = X.shape;
-    if n == 0: 
-        return 0;
-    else:
-        return la.matrix_rank(X, eps);
+;
 #----------------------------------------------------------------------------#
 """
 Return kernel of input matrix
@@ -51,22 +47,13 @@ Return kernel of input matrix
 """
 def ker(A, eps = 1e-14):
     U,D, V = la.svd(A, full_matrices=True);
-    r = rank(A, eps);
+    r = ut.rank(A, eps);
     m,n = V.shape
     if r == m:
         return np.zeros(V.T.shape)
     else:
         return V[r:, :].T
-#----------------------------------------------------------------------------#
-"""
-The range of input matrix
-    Input: matrix whose range is determined
-    Output: range of matrix, outputted as columns of a matrix     
-"""
-def image(X, tol = 1e-14):
-    U,D,V = la.svd(X);
-    r = rank(X);
-    return U[:,:r];
+
 
 #----------------------------------------------------------------------------#
 """ 
@@ -81,7 +68,7 @@ def sumS(A, B):
     if m != x:
         raise Exception('input matrices need to be of same shape');
     T = np.hstack((A, B));
-    return image(T);
+    return ut.image(T);
 #----------------------------------------------------------------------------#
 """ 
 Calculates subspace A^{-1}(im(V))
