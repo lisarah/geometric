@@ -6,6 +6,8 @@ Created on Wed May 15 22:15:43 2019
 """
 import numpy as np
 import numpy.linalg as la
+import cvxpy as cvx
+import matplotlib.pyplot as plt
 #np.random.seed(122323)
 #----------------------------------------------------------------------------#
 def ISA(V0, A, B, eps = 0.0):
@@ -16,19 +18,19 @@ def ISA(V0, A, B, eps = 0.0):
     while not isInvariant:
         iteration += 1;
         print ("--------------in interation ", iteration);
-#        print (Vt)
-#        print (sumS(Vt, B))
+        # print (f'vt = {Vt}')
+        # print (sumS(Vt, B))
         Ainved =  AinvV(A, sumS(Vt, B));
 #        print (Ainved) 
         Vnext = intersect(K, Ainved);
         print ("rank of Vt ", rank(Vt));
         print ("rank of Vnext ", rank(Vnext));
-        print ("Vnext is contaned in Vt ", contained(Vnext, Vt));
+        print ("Vnext is contained in Vt ", contained(Vnext, Vt));
         if rank(Vnext) == rank(Vt):
             isInvariant = True;
             print ("ISA returns-----")
             print (Vnext);
-            print (Vt);
+            # print (Vt);
             
         else:
             Vt = Vnext;
@@ -48,7 +50,7 @@ Return kernel of input matrix
     Output: kernel of matrix, outputted as columns of a matrix     
 """
 def ker(A, eps = 1e-14):
-    U,D, V = la.svd(A);
+    U,D, V = la.svd(A, full_matrices=True);
     r = rank(A, eps);
     m,n = V.shape
     if r == m:
@@ -115,22 +117,61 @@ def contained(A,B):
     else: 
 #        print (cap)
         return False;
-    
-#N = 50;
-#halfN = 48;
-#B =  np.random.rand(N,4);
-##A = np.zeros((N,N)); A[:halfN, :halfN] = np.eye(halfN);
-##A[halfN:, halfN:]  = np.random.rand(N -halfN,N -halfN)
-#A = np.eye(N)
-#V = np.zeros((N,3)); V[0,0] = 1.;V[1,1] = 1.;
-#U = np.zeros((N,2)); U[0,0] = 1;
-#
-#K = ker(B.T);
-##K = np.random.rand(N,2);
-##print (intersect(K, B));
-#invariantSub = (ISA(ker(K.T), -A.dot(A.T), B));
-#print (contained(B, invariantSub))
-#if rank(image(B)) == rank(intersect(B, invariantSub)):
-#    print ("can be disturbance decoupled");
-#else: 
-#    print ("no DD available")
+#@title Code to simulate/visualize dynamics
+def run_dynamics(A,B, E, F, T):
+    """ Run the dynamics for T time steps, the dynamics, given random initial 
+        conditions and random noise experienced by noisy_player.
+        x_{k+1} = Ax_k + Bu_k + Ed_k 
+      Args:
+        A: system dynamics matrix
+        B: control input matrix
+        F: controller matrix
+        T: number of time steps to simulate
+    """
+    N,M = B.shape
+    x0 = np.random.rand(N)
+    _,K = E.shape
+    x_hist = [x0]
+    for t in range(T):
+        cur_x = x_hist[-1]
+        next_x = A.dot(cur_x) + B.dot(F).dot(cur_x) + 0* E.dot(np.random.rand(K))
+        x_hist.append(next_x)
+    plt.figure()
+    plt.plot(x_hist)
+    plt.grid()
+    plt.show()
+  
+np.random.seed(122323)
+N = 10
+M = 3
+observed_player = 0
+disturbed_player = 1
+A = np.random.rand(N, N)
+B = np.random.rand(N, M)
+H = np.zeros((N, 1))
+H[observed_player,0] = 1.
+
+V = (ISA(ker(H.T), A, B))
+VB = np.concatenate((V, B),axis=1)
+# print(invariantSub)
+
+# do optimization
+F = cvx.Variable((M, N))
+# P = cvx.Variable((N,N),PSD = True)
+XS = cvx.Variable((9 + 3, 9))
+constraint = [VB@XS == A.dot(V)]
+constraint.append(XS[9:, :] == -F@V)
+# constraint.append(A.T*P + P*A + (B*F).H*P + P*B*F << 0)
+# obj = cvx.Minimize(cvx.norm2(F))# 
+# obj = cvx.Minimize(cvx.norm2(A.T*P + P*A + F.H * B.T *P + P*B*F) )
+obj = cvx.Minimize(cvx.norm2(A + B*F))
+dd = cvx.Problem(obj, constraint)
+F_norm = dd.solve(solver=cvx.MOSEK, verbose=True) #  solver=cvx.SCS,
+F_opt = F.value
+print(f'resuling controller: \n{np.round(A+B.dot(F_opt),1)}')
+
+
+E = np.zeros((N,1))
+E[disturbed_player] = 1
+print(f'blue is the disturbance decoupled player')
+run_dynamics(A,B,E,F_opt,int(4))

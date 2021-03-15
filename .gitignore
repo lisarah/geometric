@@ -2,3 +2,8 @@ __pycache__/*
 *.pyc
 *.zip
 WONHAM\ 2
+*.mp4
+*.pdf
+*.svg
+*ipynb.checkpoints/*
+*.doc
