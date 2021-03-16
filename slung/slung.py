@@ -59,7 +59,7 @@ def slung_dynamics_gen(mass, J, g_list):
     return A, B_list
 
 
-def zero_hold_dynamics(A, B_list, delta_t =1e-4):
+def zero_hold_dynamics(A, B_list, delta_t =1e-1):
     """ Generate zero hold discretized (A, B)'s from continuous time dynamics.
     
     A_d = exp(A delta_T)
@@ -85,8 +85,8 @@ def zero_hold_dynamics(A, B_list, delta_t =1e-4):
     A_d = discretized_mat[:n, :n]
     B_d_list = []
     b_len = int((m_total - 1)/(len(B_list) - 1))
-    # print(f'number of players is {b_len}, B_list length {m_total}, number of B entries {len(B_list)}')
-    for b_ind in range(len(B_list)):
+    print(f'number of players is {len(B_list)-1}, B_list length {m_total}, dim of each B {b_len}')
+    for b_ind in range(len(B_list)-1):
         b_start = n + b_len * b_ind
         B_d_list.append(discretized_mat[:n, b_start: b_start + b_len])
     B_d_list.append(discretized_mat[:n, -1])    

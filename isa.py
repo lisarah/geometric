@@ -30,15 +30,13 @@ def ISA(V0, A, B, eps = 0.0):
         if ut.rank(Vnext) == ut.rank(Vt):
             isInvariant = True;
             print ("ISA returns-----")
-            print (Vnext);
+            # print (Vnext);
             # print (Vt);
             
         else:
             Vt = Vnext;
         
     return Vt
-#----------------------------------------------------------------------------#
-;
 #----------------------------------------------------------------------------#
 """
 Return kernel of input matrix
@@ -105,7 +103,7 @@ def contained(A,B):
 #        print (cap)
         return False;
 #@title Code to simulate/visualize dynamics
-def run_dynamics(A,B, E, F, T):
+def run_noisy_dynamics(A,B, E, F, T):
     """ Run the dynamics for T time steps, the dynamics, given random initial 
         conditions and random noise experienced by noisy_player.
         x_{k+1} = Ax_k + Bu_k + Ed_k 
@@ -119,46 +117,59 @@ def run_dynamics(A,B, E, F, T):
     x0 = np.random.rand(N)
     _,K = E.shape
     x_hist = [x0]
+    to_plot = [8,9,10]
     for t in range(T):
         cur_x = x_hist[-1]
-        next_x = A.dot(cur_x) + B.dot(F).dot(cur_x) + 0* E.dot(np.random.rand(K))
+        next_x = A.dot(cur_x) + B.dot(F).dot(cur_x) + 0.5* E.dot(np.random.rand(K))
         x_hist.append(next_x)
+    x_array = np.array(x_hist)
     plt.figure()
-    plt.plot(x_hist)
+    plt.plot(x_array[:, 8], label='v_d')
+    plt.plot(x_array[:, 9], label='pitch')
+    plt.plot(x_array[:, 10], label='row')
+    plt.plot(x_array[:, 2], label='down')
+    plt.plot(x_array[:, 3], label='pitch')
+    plt.plot(x_array[:, 4], label='roll')
+    plt.plot(x_array[:, 9], label='w_pitch')
+    plt.plot(x_array[:, 10], label='w_row')
+    plt.plot(x_array[:, 6], label='v_n')
+    plt.plot(x_array[:, 7], label='v_e')
+    # plt.yscale('log')
+    plt.legend()
     plt.grid()
     plt.show()
   
-np.random.seed(122323)
-N = 10
-M = 3
-observed_player = 0
-disturbed_player = 1
-A = np.random.rand(N, N)
-B = np.random.rand(N, M)
-H = np.zeros((N, 1))
-H[observed_player,0] = 1.
+# np.random.seed(122323)
+# N = 10
+# M = 3
+# observed_player = 0
+# disturbed_player = 1
+# A = np.random.rand(N, N)
+# B = np.random.rand(N, M)
+# H = np.zeros((N, 1))
+# H[observed_player,0] = 1.
 
-V = (ISA(ker(H.T), A, B))
-VB = np.concatenate((V, B),axis=1)
-# print(invariantSub)
+# V = (ISA(ker(H.T), A, B))
+# VB = np.concatenate((V, B),axis=1)
+# # print(invariantSub)
 
-# do optimization
-F = cvx.Variable((M, N))
-# P = cvx.Variable((N,N),PSD = True)
-XS = cvx.Variable((9 + 3, 9))
-constraint = [VB@XS == A.dot(V)]
-constraint.append(XS[9:, :] == -F@V)
-# constraint.append(A.T*P + P*A + (B*F).H*P + P*B*F << 0)
-# obj = cvx.Minimize(cvx.norm2(F))# 
-# obj = cvx.Minimize(cvx.norm2(A.T*P + P*A + F.H * B.T *P + P*B*F) )
-obj = cvx.Minimize(cvx.norm2(A + B*F))
-dd = cvx.Problem(obj, constraint)
-F_norm = dd.solve(solver=cvx.MOSEK, verbose=True) #  solver=cvx.SCS,
-F_opt = F.value
-print(f'resuling controller: \n{np.round(A+B.dot(F_opt),1)}')
+# # do optimization
+# F = cvx.Variable((M, N))
+# # P = cvx.Variable((N,N),PSD = True)
+# XS = cvx.Variable((9 + 3, 9))
+# constraint = [VB@XS == A.dot(V)]
+# constraint.append(XS[9:, :] == -F@V)
+# # constraint.append(A.T*P + P*A + (B*F).H*P + P*B*F << 0)
+# # obj = cvx.Minimize(cvx.norm2(F))# 
+# # obj = cvx.Minimize(cvx.norm2(A.T*P + P*A + F.H * B.T *P + P*B*F) )
+# obj = cvx.Minimize(cvx.norm2(A + B*F))
+# dd = cvx.Problem(obj, constraint)
+# F_norm = dd.solve(solver=cvx.MOSEK, verbose=True) #  solver=cvx.SCS,
+# F_opt = F.value
+# print(f'resuling controller: \n{np.round(A+B.dot(F_opt),1)}')
 
 
-E = np.zeros((N,1))
-E[disturbed_player] = 1
-print(f'blue is the disturbance decoupled player')
-run_dynamics(A,B,E,F_opt,int(4))
+# E = np.zeros((N,1))
+# E[disturbed_player] = 1
+# print(f'blue is the disturbance decoupled player')
+# run_noisy_dynamics(A,B,E,F_opt,int(4))
