@@ -109,14 +109,17 @@ def sim_slung_dynamics(A, B_list, K_list, gravity_vector, time, x_0 = None):
         - x_hist: a list of system states for the first time time steps.
     """
     n,_ = A.shape
-    if x_0 == None:
+    if x_0 is None:
         x_0 = 1 * np.random.rand(n)
+    gravity = np.zeros(n)
+    gravity[8] = -9.81
     x_hist = [x_0]
     for t in range(time):
         x_cur = x_hist[-1]
-        x_next = A.dot(x_cur) + 9.81 * gravity_vector # downward acceleration
+        diff = x_cur - gravity_vector
+        x_next = A.dot(diff)  # + 9.81 * gravity_vector # downward acceleration
         for i in range(len(K_list)):
-            x_next += B_list[i].dot(K_list[i]).dot(x_cur)
+            x_next += B_list[i].dot(K_list[i]).dot(diff)
         x_hist.append(1*x_next)
     
     return x_hist

@@ -93,6 +93,7 @@ def intersect(A,B):
     return ker(np.hstack((kerA, kerB)).T, 1e-14);
 #----------------------------------------------------------------------------#
 def contained(A,B):
+    """ Checks if range of A is contained in range of B."""
     kerB = ker(B.T);
     cap = kerB.T.dot(A); 
     m,n = cap.shape;
@@ -103,7 +104,8 @@ def contained(A,B):
 #        print (cap)
         return False;
 #@title Code to simulate/visualize dynamics
-def run_noisy_dynamics(A,B, E, F, T):
+def run_noisy_dynamics(A,B, E, F, T, 
+                       gravity_vector=None, x_init=None,title=None):
     """ Run the dynamics for T time steps, the dynamics, given random initial 
         conditions and random noise experienced by noisy_player.
         x_{k+1} = Ax_k + Bu_k + Ed_k 
@@ -114,27 +116,37 @@ def run_noisy_dynamics(A,B, E, F, T):
         T: number of time steps to simulate
     """
     N,M = B.shape
-    x0 = np.random.rand(N)
+    if x_init is not None:
+        x0 = x_init
+    else:
+        x0 = np.random.rand(N)
+    gravity = np.zeros(N)
+    gravity[8] = -9.81
     _,K = E.shape
     x_hist = [x0]
-    to_plot = [8,9,10]
     for t in range(T):
         cur_x = x_hist[-1]
-        next_x = A.dot(cur_x) + B.dot(F).dot(cur_x) + 0.5* E.dot(np.random.rand(K))
+        diff = cur_x - gravity_vector
+        next_x = A.dot(diff) + B.dot(F).dot(diff) + 5e1 * E.dot(np.random.rand(K))
+        # if gravity_vector is not None:
+        #     next_x += 9.81 * gravity_vector # downward acceleration
         x_hist.append(next_x)
     x_array = np.array(x_hist)
     plt.figure()
-    plt.plot(x_array[:, 8], label='v_d')
-    plt.plot(x_array[:, 9], label='pitch')
-    plt.plot(x_array[:, 10], label='row')
+    plt.plot(x_array[:, 0], label ='north')
+    plt.plot(x_array[:, 1], label ='east')
     plt.plot(x_array[:, 2], label='down')
     plt.plot(x_array[:, 3], label='pitch')
     plt.plot(x_array[:, 4], label='roll')
-    plt.plot(x_array[:, 9], label='w_pitch')
-    plt.plot(x_array[:, 10], label='w_row')
-    plt.plot(x_array[:, 6], label='v_n')
-    plt.plot(x_array[:, 7], label='v_e')
+    plt.plot(x_array[:, 5], label='yaw')
+    # plt.plot(x_array[:, 8], label='v_d')
+    # plt.plot(x_array[:, 9], label='w_pitch')
+    # plt.plot(x_array[:, 10], label='w_roll')
+    # plt.plot(x_array[:, 6], label='v_n')
+    # plt.plot(x_array[:, 7], label='v_e')
     # plt.yscale('log')
+    if title is not None:
+        plt.title(title)
     plt.legend()
     plt.grid()
     plt.show()
