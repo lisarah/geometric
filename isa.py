@@ -104,8 +104,7 @@ def contained(A,B):
 #        print (cap)
         return False;
 #@title Code to simulate/visualize dynamics
-def run_noisy_dynamics(A,B, E, F, T, 
-                       gravity_vector=None, x_init=None,title=None):
+def run_noisy_dynamics(A,B, E, F, T, offset=None, x_init=None,title=None):
     """ Run the dynamics for T time steps, the dynamics, given random initial 
         conditions and random noise experienced by noisy_player.
         x_{k+1} = Ax_k + Bu_k + Ed_k 
@@ -120,16 +119,13 @@ def run_noisy_dynamics(A,B, E, F, T,
         x0 = x_init
     else:
         x0 = np.random.rand(N)
-    gravity = np.zeros(N)
-    gravity[8] = -9.81
     _,K = E.shape
     x_hist = [x0]
     for t in range(T):
         cur_x = x_hist[-1]
-        diff = cur_x - gravity_vector
-        next_x = A.dot(diff) + B.dot(F).dot(diff) + 5e1 * E.dot(np.random.rand(K))
-        # if gravity_vector is not None:
-        #     next_x += 9.81 * gravity_vector # downward acceleration
+        noise_multiplier = 0.1
+        next_x = (A.dot(cur_x) + B.dot(F).dot(cur_x - offset) 
+                  + noise_multiplier * E.dot(np.random.rand(K)))
         x_hist.append(next_x)
     x_array = np.array(x_hist)
     plt.figure()

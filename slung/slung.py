@@ -6,7 +6,7 @@ Created on Fri Mar 12 18:14:06 2021
 """
 import numpy as np
 import scipy.linalg as sla
-
+import matplotlib.pyplot as plt
 
 def slung_dynamics_gen(mass, J, g_list):
     """ Generate the multi-lift slung load hovering dynamics.
@@ -85,15 +85,80 @@ def zero_hold_dynamics(A, B_list, delta_t =1e-1):
     A_d = discretized_mat[:n, :n]
     B_d_list = []
     b_len = int((m_total - 1)/(len(B_list) - 1))
-    print(f'number of players is {len(B_list)-1}, B_list length {m_total}, dim of each B {b_len}')
-    for b_ind in range(len(B_list)-1):
+    print(f'number of players is {len(B_list)-1}, B_list length {m_total}, '
+          f'dim of each B {b_len}')
+    for b_ind in range(len(B_list)):
         b_start = n + b_len * b_ind
-        B_d_list.append(discretized_mat[:n, b_start: b_start + b_len])
-    B_d_list.append(discretized_mat[:n, -1])    
+        B_d_list.append(discretized_mat[:n, b_start: b_start + b_len])  
     return A_d, B_d_list 
+
+
+def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
+    """ Discretize slung load dynamics under cooperative control.
     
+        Discretize the slung load dynamics and either introduce LQR before or
+    after the discretization. 
+        Good discretization values: 
+            - Q = 2e6, discretizaiton = 1e-1, T = 1e2
+            - Q = 5e7, discretization = 1e-3, T = 1e4
+    Args:
+        - A: system dynamics.
+        - B_list: control matrices.
+        - Q: lqr's Q.
+        - R: lqr's R.
+        - disretization: amount of discretization in time. 
+        - continuous_lqr: if True, implement LQR before discretization, 
+            if False, implement LQR after discretization. 
+    Returns:
+        - A_d: discretized closed loop dynamics.
+        - B_d: discretized control matrix.
+        - B_d_list: discretized control matrices, if continuous LQR is
+            implemented, this list will be zero matrices.
+        - K_list: discretized controllers.
+    """
+    K_list = []
+    B = np.concatenate(B_list, axis=1)
+    n, m = B_list[0].shape
+    player_num = len(B_list)
     
-def sim_slung_dynamics(A, B_list, K_list, gravity_vector, time, x_0 = None):
+    if continuous_lqr: # solve riccati for controller before discretization.
+        P = sla.solve_continuous_are(A, B, Q, R)
+        K_total = -sla.inv(R).dot(B.T).dot(P)
+        A_net = A + B.dot(K_total)
+    else: # discretize first 
+        P = sla.solve_discrete_are(A, B, Q, R)
+        A_net = 1*A
+        
+    # discretization - zero hold.    
+    A_sys_d, B_holder = zero_hold_dynamics(A_net, B_list, discretization)  
+    B_d = np.concatenate(B_holder, axis=1)
+    B_d_list = [np.zeros((n, m)) for p in range(player_num)]
+    
+    if continuous_lqr: 
+        A_d = A_sys_d
+        lhs = A.T.dot(P) + P.dot(A) + P.dot(B).dot(K_total)
+    else: # solve discrete riccati for controller and discrete dynamics.
+        B_d_list = B_holder
+        K_total = -sla.inv(R + B_d.T.dot(P).dot(B_d)).dot(
+            B_d.T).dot(P).dot(A_sys_d)
+        lhs = A_sys_d.T.dot(P).dot(A_sys_d) - P + A_sys_d.T.dot(
+            P).dot(B_d).dot(K_total)
+        A_d = A_sys_d + B_d.dot(K_total)
+
+    if continuous_lqr:
+        print('---- continuous time LQR.')
+        e,v = np.linalg.eig(A_net)
+        print(f'continuous time eigen values {(np.real(e))}')
+        
+    print('CARE/DARE equation is satisfied',np.allclose(lhs, -Q))  
+    for i in range(player_num):
+        K_list.append(K_total[i*m:(i+1)*m, :])
+    e,v = np.linalg.eig(A_d) 
+    print(f'discretized A + BK eigen values {abs(e)}')
+    return A_d, B_d, B_d_list, K_list
+
+
+def sim_slung_dynamics(A, B_list, K_list, offset, time, x_0 = None):
     """ Simulate discretized slung dynamics.
     
     x_{t+1} = Ax_t + \sum_i B_i K_i x_t
@@ -102,7 +167,7 @@ def sim_slung_dynamics(A, B_list, K_list, gravity_vector, time, x_0 = None):
         - A: discretized time system dynamics.
         - B_list: discretized controller dynamics.
         - K_list: feedback controllers corresponding to B_list.
-        - gravity_vector: discretized gravity input.
+        - offset: offset vector to x_t at every time step.
         - time: total number of time steps.
         - x_0: initial system state, defaults to random point. 
     Returns:
@@ -111,15 +176,29 @@ def sim_slung_dynamics(A, B_list, K_list, gravity_vector, time, x_0 = None):
     n,_ = A.shape
     if x_0 is None:
         x_0 = 1 * np.random.rand(n)
-    gravity = np.zeros(n)
-    gravity[8] = -9.81
     x_hist = [x_0]
     for t in range(time):
         x_cur = x_hist[-1]
-        diff = x_cur - gravity_vector
-        x_next = A.dot(diff)  # + 9.81 * gravity_vector # downward acceleration
+        diff = x_cur - offset
+        x_next = A.dot(x_cur)
         for i in range(len(K_list)):
             x_next += B_list[i].dot(K_list[i]).dot(diff)
         x_hist.append(1*x_next)
     
     return x_hist
+
+def plot_slung_states(x_hist, title):
+    """Plot the output of sim_slung_dynamics.
+    
+    Args:
+        - x_hist: a list of payload state history.
+        - title: title of plot.
+    """
+    labels = ['north', 'east', 'down', 'phi', 'theta', 'psi']
+    history = np.array(x_hist)
+    plt.figure()
+    plt.title(title)
+    [plt.plot(history[:,i], label=labels[i]) for i in range(len(labels))]
+    plt.grid()
+    plt.legend()
+    plt.show()
