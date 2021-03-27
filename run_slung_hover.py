@@ -14,9 +14,9 @@ import cvxpy as cvx
 
 
 plt.close('all')
-continuous_lqr = True
-discretization = 1e-2 if continuous_lqr else 1e-1 # 1e-1 for discrete LQR
-Time = int(2e3)
+continuous_lqr = False
+discretization = 1e-2 if continuous_lqr else 1e-3 # 1e-1 for discrete LQR
+Time = int(1e4) if continuous_lqr else int(1e4)
 
 # payload definition
 mass = 1 # kg.
@@ -39,18 +39,21 @@ _, m = B_list[0].shape
 
 # LQR parameter definition
 R = 1e0 * np.eye(players*m)
-Q = 1e1 * np.eye(n)
+Q = 8e2 * np.eye(n) if continuous_lqr else 8e2 * np.eye(n)
+
 
 # generate LQR controllers. 
-A_d, B_d, B_d_list, K_list = slung.lqr_and_discretize(
+A_d, B_d, K_list = slung.lqr_and_discretize(
     A, B_list, Q, R, discretization, continuous_lqr=continuous_lqr)
 
 x0 = np.random.rand(n)
 offset = np.zeros(n)
-
+B_d_list = [B_d[:, m*i : m*(i+1)] for i in range(players)]
+ 
 # plot discretized LQR result with no noise
 title = 'discretized LQR feedback'
-x_hist = slung.sim_slung_dynamics(A_d, B_d_list, K_list, offset, Time, x_0=x0)
+B_zero_list = [np.zeros((n, m)) for i in range(players)]
+x_hist = slung.sim_slung_dynamics(A_d, B_zero_list, K_list, offset, Time, x0)
 slung.plot_slung_states(x_hist, title)
 
 #-------------- design disturbance decoupling controller -----------------#
@@ -79,7 +82,8 @@ E[6, 0] = 1. # north velocity
 E[7, 1] = 1. # east velocity
 empty_F = np.zeros((m*players, n))
 title = 'discretized LQR feedback with noise'
-isa.run_noisy_dynamics(A_d ,B_d, E, empty_F, Time, offset, x0, title)
+x_hist = isa.run_noisy_dynamics(A_d ,B_d, E, empty_F, Time, offset, x0)
+slung.plot_slung_states(x_hist, title)
 # check if noise is contained in V.
 print(f'range of E is contained in V {isa.contained(E, V)}')
 
@@ -91,10 +95,11 @@ F = cvx.Variable((m*players, n))
 XS = cvx.Variable((dd_dim + m * players, dd_dim))
 # enforce disturbance decoupling constraint.
 constraint = [VB@XS == A_d.dot(V)]
-constraint.append(cvx.norm2(A_d + B_d@F) <=1.05)
+constraint_threshold = 1. if continuous_lqr else 1.05
+constraint.append(cvx.norm2(A_d + B_d@F) <= constraint_threshold)
 constraint.append(XS[dd_dim:, :] == -F@V) 
 # run optimization for minimal control effort
-obj = cvx.Minimize(cvx.norm2(B_d@F))
+obj = cvx.Minimize(cvx.norm2(B_d@F)) #   A_d +
 dd = cvx.Problem(obj, constraint)
 system_norm = dd.solve(solver=cvx.MOSEK, verbose=True) #  solver=cvx.SCS,
 
@@ -106,18 +111,19 @@ lhs = V.dot(X_0) - B_d.dot(F_opt).dot(V)
 rhs = A_d.dot(V)
 print(f'DD condition is satisfied {np.allclose(lhs,rhs)}')
 
+e, v = np.linalg.eig(A_d + B_d.dot(F_opt))
+print(f'eign values of DD dynamics:{abs(e)}')
 # plot the discrete LQR with no noise
 title = 'discretized LQR feedback with DD controller and no noise'
 dF_list = [F_opt[i*m:(i+1)*m, :] for i in range(players)]
-x_hist = slung.sim_slung_dynamics(A_d, B_d_list, dF_list, offset, Time, x_0=x0)
+x_hist = slung.sim_slung_dynamics(A_d, B_d_list, dF_list, offset, Time, x0)
 slung.plot_slung_states(x_hist, title)
 
 
 # add random noise in the north and east velocity directions
 title = 'discretized LQR feedback with DD controller and noise'
-isa.run_noisy_dynamics(A_d, B_d, E, F_opt, T=Time, offset=np.squeeze(offset), 
-                       x_init=x0, title=title)
-
+x_hist = isa.run_noisy_dynamics(A_d, B_d, E, F_opt, Time, offset, x0)
+slung.plot_slung_states(x_hist, title)
 
 # check that the controller F is not unique on the range(V).
 # F_1 = np.zeros((12,12))

@@ -104,7 +104,7 @@ def contained(A,B):
 #        print (cap)
         return False;
 #@title Code to simulate/visualize dynamics
-def run_noisy_dynamics(A,B, E, F, T, offset=None, x_init=None,title=None):
+def run_noisy_dynamics(A, B, E, F, T, offset=None, x_init=None):
     """ Run the dynamics for T time steps, the dynamics, given random initial 
         conditions and random noise experienced by noisy_player.
         x_{k+1} = Ax_k + Bu_k + Ed_k 
@@ -113,6 +113,8 @@ def run_noisy_dynamics(A,B, E, F, T, offset=None, x_init=None,title=None):
         B: control input matrix
         F: controller matrix
         T: number of time steps to simulate
+      Returns:
+        x_hist: history of state values
     """
     N,M = B.shape
     if x_init is not None:
@@ -123,29 +125,11 @@ def run_noisy_dynamics(A,B, E, F, T, offset=None, x_init=None,title=None):
     x_hist = [x0]
     for t in range(T):
         cur_x = x_hist[-1]
-        noise_multiplier = 0.1
+        noise_multiplier = 1e-1
         next_x = (A.dot(cur_x) + B.dot(F).dot(cur_x - offset) 
                   + noise_multiplier * E.dot(np.random.rand(K)))
         x_hist.append(next_x)
-    x_array = np.array(x_hist)
-    plt.figure()
-    plt.plot(x_array[:, 0], label ='north')
-    plt.plot(x_array[:, 1], label ='east')
-    plt.plot(x_array[:, 2], label='down')
-    plt.plot(x_array[:, 3], label='pitch')
-    plt.plot(x_array[:, 4], label='roll')
-    plt.plot(x_array[:, 5], label='yaw')
-    # plt.plot(x_array[:, 8], label='v_d')
-    # plt.plot(x_array[:, 9], label='w_pitch')
-    # plt.plot(x_array[:, 10], label='w_roll')
-    # plt.plot(x_array[:, 6], label='v_n')
-    # plt.plot(x_array[:, 7], label='v_e')
-    # plt.yscale('log')
-    if title is not None:
-        plt.title(title)
-    plt.legend()
-    plt.grid()
-    plt.show()
+    return x_hist
   
 # np.random.seed(122323)
 # N = 10

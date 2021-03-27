@@ -83,14 +83,15 @@ def zero_hold_dynamics(A, B_list, delta_t =1e-1):
     
     discretized_mat= sla.expm(exponent_mat)
     A_d = discretized_mat[:n, :n]
-    B_d_list = []
-    b_len = int((m_total - 1)/(len(B_list) - 1))
-    print(f'number of players is {len(B_list)-1}, B_list length {m_total}, '
-          f'dim of each B {b_len}')
-    for b_ind in range(len(B_list)):
-        b_start = n + b_len * b_ind
-        B_d_list.append(discretized_mat[:n, b_start: b_start + b_len])  
-    return A_d, B_d_list 
+    B_d = discretized_mat[:n, n:]
+    # B_d_list = []
+    # b_len = int((m_total - 1)/(len(B_list) - 1))
+    # print(f'number of players is {len(B_list)-1}, B_list length {m_total}, '
+    #       f'dim of each B {b_len}')
+    # for b_ind in range(len(B_list)):
+    #     b_start = n + b_len * b_ind
+    #     B_d_list.append(discretized_mat[:n, b_start: b_start + b_len])  
+    return A_d, B_d 
 
 
 def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
@@ -130,15 +131,12 @@ def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
         A_net = 1*A
         
     # discretization - zero hold.    
-    A_sys_d, B_holder = zero_hold_dynamics(A_net, B_list, discretization)  
-    B_d = np.concatenate(B_holder, axis=1)
-    B_d_list = [np.zeros((n, m)) for p in range(player_num)]
+    A_sys_d, B_d = zero_hold_dynamics(A_net, B_list, discretization)  
     
     if continuous_lqr: 
         A_d = A_sys_d
         lhs = A.T.dot(P) + P.dot(A) + P.dot(B).dot(K_total)
     else: # solve discrete riccati for controller and discrete dynamics.
-        B_d_list = B_holder
         K_total = -sla.inv(R + B_d.T.dot(P).dot(B_d)).dot(
             B_d.T).dot(P).dot(A_sys_d)
         lhs = A_sys_d.T.dot(P).dot(A_sys_d) - P + A_sys_d.T.dot(
@@ -155,10 +153,10 @@ def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
         K_list.append(K_total[i*m:(i+1)*m, :])
     e,v = np.linalg.eig(A_d) 
     print(f'discretized A + BK eigen values {abs(e)}')
-    return A_d, B_d, B_d_list, K_list
+    return A_d, B_d, K_list
 
 
-def sim_slung_dynamics(A, B_list, K_list, offset, time, x_0 = None):
+def sim_slung_dynamics(A, B_list, K_list, offset, time, x_0=None):
     """ Simulate discretized slung dynamics.
     
     x_{t+1} = Ax_t + \sum_i B_i K_i x_t
