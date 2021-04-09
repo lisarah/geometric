@@ -115,12 +115,12 @@ def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
         - B_d: discretized control matrix.
         - B_d_list: discretized control matrices, if continuous LQR is
             implemented, this list will be zero matrices.
-        - K_list: discretized controllers.
+        - K_total: discretized feedback controller.
     """
-    K_list = []
+    # K_list = []
     B = np.concatenate(B_list, axis=1)
     n, m = B_list[0].shape
-    player_num = len(B_list)
+    # player_num = len(B_list)
     
     if continuous_lqr: # solve riccati for controller before discretization.
         P = sla.solve_continuous_are(A, B, Q, R)
@@ -149,11 +149,11 @@ def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
         print(f'continuous time eigen values {(np.real(e))}')
         
     print('CARE/DARE equation is satisfied',np.allclose(lhs, -Q))  
-    for i in range(player_num):
-        K_list.append(K_total[i*m:(i+1)*m, :])
+    # for i in range(player_num):
+    #     K_list.append(K_total[i*m:(i+1)*m, :])
     e,v = np.linalg.eig(A_d) 
     print(f'discretized A + BK eigen values {abs(e)}')
-    return A_d, B_d, K_list
+    return A_d, B_d, K_total
 
 
 def sim_slung_dynamics(A, B_list, K_list, offset, time, x_0=None):

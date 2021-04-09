@@ -5,16 +5,16 @@ Created on Fri Mar 12 18:54:59 2021
 @author: Sarah Li
 """
 import isa as isa
+import lti as lti
+import subspace_linalg as subspace
 import numpy as np
 import matplotlib.pyplot as plt
 import slung.slung as slung
-import scipy.linalg as sla
-import util as ut
 import cvxpy as cvx
 
 
 plt.close('all')
-continuous_lqr = False
+continuous_lqr = True
 discretization = 1e-2 if continuous_lqr else 1e-3 # 1e-1 for discrete LQR
 Time = int(1e4) if continuous_lqr else int(1e4)
 
@@ -31,11 +31,8 @@ players = len(g_list)
 
 # slung dynamics generation.
 A, B_list = slung.slung_dynamics_gen(mass, J, g_list)
-n, _ = A.shape
-_, m = B_list[0].shape
-# B_total = np.concatenate(B_list, axis=1)
-# print(f'systems controllable subspace has rank '
-#       f'{ut.control_subspace(A, B_total)}')
+n, m = B_list[0].shape
+
 
 # LQR parameter definition
 R = 1e0 * np.eye(players*m)
@@ -43,17 +40,16 @@ Q = 8e2 * np.eye(n) if continuous_lqr else 8e2 * np.eye(n)
 
 
 # generate LQR controllers. 
-A_d, B_d, K_list = slung.lqr_and_discretize(
+A_d, B_d, K_total = slung.lqr_and_discretize(
     A, B_list, Q, R, discretization, continuous_lqr=continuous_lqr)
 
 x0 = np.random.rand(n)
 offset = np.zeros(n)
-B_d_list = [B_d[:, m*i : m*(i+1)] for i in range(players)]
  
 # plot discretized LQR result with no noise
 title = 'discretized LQR feedback'
-B_zero_list = [np.zeros((n, m)) for i in range(players)]
-x_hist = slung.sim_slung_dynamics(A_d, B_zero_list, K_list, offset, Time, x0)
+B_zero = np.zeros(B_d.shape)
+x_hist = lti.run_dynamics(A_d, B_zero, None, K_total, Time, x0)
 slung.plot_slung_states(x_hist, title)
 
 #-------------- design disturbance decoupling controller -----------------#
@@ -72,7 +68,7 @@ H = np.zeros((n, len(observed_states))) # decouple z and pitch and roll
 for i in range(len(observed_states)):
     H[observed_states[i], i] = 1.
     
-V = isa.ISA(isa.ker(H.T), A_d, B_d)
+V = isa.ISA(subspace.ker(H.T), A_d, B_d)
 print(np.round(V,2))
 
 # add random noise in the north and east velocity directions
@@ -80,12 +76,14 @@ print(np.round(V,2))
 E = np.zeros((n, 2))
 E[6, 0] = 1. # north velocity
 E[7, 1] = 1. # east velocity
-empty_F = np.zeros((m*players, n))
+
 title = 'discretized LQR feedback with noise'
-x_hist = isa.run_noisy_dynamics(A_d ,B_d, E, empty_F, Time, offset, x0)
+x_hist = lti.run_dynamics(A_d ,B_d, E, np.zeros(K_total.shape), Time, offset, 
+                          x0, noise=True)
 slung.plot_slung_states(x_hist, title)
+
 # check if noise is contained in V.
-print(f'range of E is contained in V {isa.contained(E, V)}')
+print(f'range of E is contained in V {subspace.contained(E, V)}')
 
 VB = np.concatenate((V, B_d),axis=1)
 _, dd_dim = V.shape
@@ -115,14 +113,13 @@ e, v = np.linalg.eig(A_d + B_d.dot(F_opt))
 print(f'eign values of DD dynamics:{abs(e)}')
 # plot the discrete LQR with no noise
 title = 'discretized LQR feedback with DD controller and no noise'
-dF_list = [F_opt[i*m:(i+1)*m, :] for i in range(players)]
-x_hist = slung.sim_slung_dynamics(A_d, B_d_list, dF_list, offset, Time, x0)
+x_hist = lti.run_dynamics(A_d, B_d, None, F_opt, Time, x0)
 slung.plot_slung_states(x_hist, title)
 
 
 # add random noise in the north and east velocity directions
 title = 'discretized LQR feedback with DD controller and noise'
-x_hist = isa.run_noisy_dynamics(A_d, B_d, E, F_opt, Time, offset, x0)
+x_hist = lti.run_dynamics(A_d, B_d, E, F_opt, Time, offset, x0, noise=True)
 slung.plot_slung_states(x_hist, title)
 
 # check that the controller F is not unique on the range(V).

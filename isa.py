@@ -2,15 +2,11 @@
 """
 Created on Wed May 15 22:15:43 2019
 
-@author: craba
+@author: Sarah Li
 """
-import numpy as np
-import numpy.linalg as la
-import cvxpy as cvx
-import matplotlib.pyplot as plt
-import util as ut
-#np.random.seed(122323)
-#----------------------------------------------------------------------------#
+import subspace_linalg as subspace
+
+
 def ISA(V0, A, B, eps = 0.0):
     K = V0;
     Vt= 1.0*V0;
@@ -21,13 +17,13 @@ def ISA(V0, A, B, eps = 0.0):
         print ("--------------in interation ", iteration);
         # print (f'vt = {Vt}')
         # print (sumS(Vt, B))
-        Ainved =  AinvV(A, sumS(Vt, B));
+        Ainved =  subspace.a_inv_v(A, subspace.sum(Vt, B));
 #        print (Ainved) 
-        Vnext = intersect(K, Ainved);
-        print ("rank of Vt ", ut.rank(Vt));
-        print ("rank of Vnext ", ut.rank(Vnext));
-        print ("Vnext is contained in Vt ", contained(Vnext, Vt));
-        if ut.rank(Vnext) == ut.rank(Vt):
+        Vnext = subspace.intersect(K, Ainved);
+        print ("rank of Vt ", subspace.rank(Vt));
+        print ("rank of Vnext ", subspace.rank(Vnext));
+        print ("Vnext is contained in Vt ", subspace.contained(Vnext, Vt))
+        if subspace.rank(Vnext) == subspace.rank(Vt):
             isInvariant = True;
             print ("ISA returns-----")
             # print (Vnext);
@@ -37,99 +33,7 @@ def ISA(V0, A, B, eps = 0.0):
             Vt = Vnext;
         
     return Vt
-#----------------------------------------------------------------------------#
-"""
-Return kernel of input matrix
-    Input: matrix whose kernel is determined
-    Output: kernel of matrix, outputted as columns of a matrix     
-"""
-def ker(A, eps = 1e-14):
-    U,D, V = la.svd(A, full_matrices=True);
-    r = ut.rank(A, eps);
-    m,n = V.shape
-    if r == m:
-        return np.zeros(V.T.shape)
-    else:
-        return V[r:, :].T
 
-
-#----------------------------------------------------------------------------#
-""" 
-Sums two subspaces together
-    Input: matrix A and matrix B
-    Output: a matrix whose columns are orthonormal and span the union
-    of span(A) and span(B)
-"""
-def sumS(A, B):
-    m,n = A.shape;
-    x,y = B.shape    
-    if m != x:
-        raise Exception('input matrices need to be of same shape');
-    T = np.hstack((A, B));
-    return ut.image(T);
-#----------------------------------------------------------------------------#
-""" 
-Calculates subspace A^{-1}(im(V))
-    by noting that (A^{-1}im(V)) = ker((A^Tker(V.T)).T)
-"""
-def AinvV(A, V):
-#    print ("In AinvV")
-#    print (V)
-    kerV = ker(V.T);
-    
-    AtV = A.T.dot(kerV);
-    return ker(AtV.T);
-#----------------------------------------------------------------------------#
-"""
-Given matrix A and matrix B  return the intersection of their ranges
-     by noting that A intersect B = ker( (ker(A.T) + ker(B.T)).T )
-"""
-def intersect(A,B):
-    kerA = ker(A.T, 1e-14);
-    kerB = ker(B.T, 1e-14);
-#    print("In intersect")
-#    print (kerA.shape);
-#    print (kerB.shape);
-    return ker(np.hstack((kerA, kerB)).T, 1e-14);
-#----------------------------------------------------------------------------#
-def contained(A,B):
-    """ Checks if range of A is contained in range of B."""
-    kerB = ker(B.T);
-    cap = kerB.T.dot(A); 
-    m,n = cap.shape;
-    Zero = np.zeros((m,n))
-    if np.allclose(cap, Zero):   
-        return True;
-    else: 
-#        print (cap)
-        return False;
-#@title Code to simulate/visualize dynamics
-def run_noisy_dynamics(A, B, E, F, T, offset=None, x_init=None):
-    """ Run the dynamics for T time steps, the dynamics, given random initial 
-        conditions and random noise experienced by noisy_player.
-        x_{k+1} = Ax_k + Bu_k + Ed_k 
-      Args:
-        A: system dynamics matrix
-        B: control input matrix
-        F: controller matrix
-        T: number of time steps to simulate
-      Returns:
-        x_hist: history of state values
-    """
-    N,M = B.shape
-    if x_init is not None:
-        x0 = x_init
-    else:
-        x0 = np.random.rand(N)
-    _,K = E.shape
-    x_hist = [x0]
-    for t in range(T):
-        cur_x = x_hist[-1]
-        noise_multiplier = 1e-1
-        next_x = (A.dot(cur_x) + B.dot(F).dot(cur_x - offset) 
-                  + noise_multiplier * E.dot(np.random.rand(K)))
-        x_hist.append(next_x)
-    return x_hist
   
 # np.random.seed(122323)
 # N = 10

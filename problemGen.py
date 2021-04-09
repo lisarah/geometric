@@ -9,6 +9,7 @@ import numpy as np
 import control as ctl
 import random as rdn
 import isa as isa
+import subspace_linalg as subspace
 
 multiplier = 3;
 case2 = False;
@@ -38,8 +39,8 @@ if case2:
 V0 = 1.0*E; 
 invariantSub = (isa.ISA(V0, A, B));
 
-print (isa.contained(E, invariantSub))
-print (isa.contained(invariantSub, nullC ))
+print (subspace.contained(E, invariantSub))
+print (subspace.contained(invariantSub, nullC ))
 #allDen = rdn.sample(range(20), 3)
 #Tnum  = []; Tden = [];
 #
