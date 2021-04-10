@@ -42,8 +42,12 @@ _,v_col = V.shape
 #--------------------- solve BMI -----------------------#
 F_k, alpha_k, P_k, eig_history = dd.solve_bmi(A, B, alpha_0, F_0, P_0, V,
                                               verbose=True)
+
+F_k, alpha_k, P_k, eig_history = dd.solve_bmi_2(A, B, alpha_0, F_k, P_k, V,
+                                                verbose=True)
 plt.plot(eig_history)
-plt.title('Maximum real part of eig(A+BF) ')
+# plt.title('Maximum real part of eig(A+BF) ')
+plt.title('2 norm of F')
 plt.grid()
 plt.show()
 
