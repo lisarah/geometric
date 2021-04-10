@@ -5,9 +5,24 @@ Created on Fri Mar 12 18:14:06 2021
 @author: Sarah Li
 """
 import numpy as np
-import scipy.linalg as sla
 import matplotlib.pyplot as plt
 
+
+_STATES_DICT = {
+    'north': 0,
+    'east':  1,
+    'down':  2,
+    'pitch': 3,
+    'roll':  4,
+    'yaw':   5, 
+    'north velocity': 6, 
+    'east velocity': 7, 
+    'down velocity': 8,
+    'pitch velocity': 9,
+    'roll velocity': 10,
+    'yaw velocity': 11
+}
+    
 def slung_dynamics_gen(mass, J, g_list):
     """ Generate the multi-lift slung load hovering dynamics.
     
@@ -58,135 +73,24 @@ def slung_dynamics_gen(mass, J, g_list):
         
     return A, B_list
 
+def state_matrix(states_list):
+    """ Return a matrix for the slung load dynamics. 
 
-def zero_hold_dynamics(A, B_list, delta_t =1e-1):
-    """ Generate zero hold discretized (A, B)'s from continuous time dynamics.
-    
-    A_d = exp(A delta_T)
-    B_d = A^{-1}(A_d - I)B
-    g_d = A^{-1}(A_d - I)
-    
     Args:
-        - A: continuous time system dynamics.
-        - B_list: continuous time controller dynamics for players.
-        - delta_t: time interval for discretization.
+        - states_list: a list of states that should be in the range [str list].
     Returns:
-        - A_d: discretized zero-hold system dynamics.
-        - B_d_list: discretized zero-hold controller dynamics
+        - H: the corresponding matrix [ndarray, nxl].
     """
-    B_total = np.concatenate(B_list, axis = 1)
-    n, m_total = B_total.shape
-    exponent_up = delta_t * np.concatenate((A,B_total), axis=1)
-    exponent_low = delta_t * np.concatenate(
-        (np.zeros((m_total, n)), np.eye(m_total)), axis=1)
-    exponent_mat = np.concatenate((exponent_up, exponent_low), axis=0)
-    
-    discretized_mat= sla.expm(exponent_mat)
-    A_d = discretized_mat[:n, :n]
-    B_d = discretized_mat[:n, n:]
-    # B_d_list = []
-    # b_len = int((m_total - 1)/(len(B_list) - 1))
-    # print(f'number of players is {len(B_list)-1}, B_list length {m_total}, '
-    #       f'dim of each B {b_len}')
-    # for b_ind in range(len(B_list)):
-    #     b_start = n + b_len * b_ind
-    #     B_d_list.append(discretized_mat[:n, b_start: b_start + b_len])  
-    return A_d, B_d 
-
-
-def lqr_and_discretize(A, B_list, Q, R, discretization, continuous_lqr = True):
-    """ Discretize slung load dynamics under cooperative control.
-    
-        Discretize the slung load dynamics and either introduce LQR before or
-    after the discretization. 
-        Good discretization values: 
-            - Q = 2e6, discretizaiton = 1e-1, T = 1e2
-            - Q = 5e7, discretization = 1e-3, T = 1e4
-    Args:
-        - A: system dynamics.
-        - B_list: control matrices.
-        - Q: lqr's Q.
-        - R: lqr's R.
-        - disretization: amount of discretization in time. 
-        - continuous_lqr: if True, implement LQR before discretization, 
-            if False, implement LQR after discretization. 
-    Returns:
-        - A_d: discretized closed loop dynamics.
-        - B_d: discretized control matrix.
-        - B_d_list: discretized control matrices, if continuous LQR is
-            implemented, this list will be zero matrices.
-        - K_total: discretized feedback controller.
-    """
-    # K_list = []
-    B = np.concatenate(B_list, axis=1)
-    n, m = B_list[0].shape
-    # player_num = len(B_list)
-    
-    if continuous_lqr: # solve riccati for controller before discretization.
-        P = sla.solve_continuous_are(A, B, Q, R)
-        K_total = -sla.inv(R).dot(B.T).dot(P)
-        A_net = A + B.dot(K_total)
-    else: # discretize first 
-        P = sla.solve_discrete_are(A, B, Q, R)
-        A_net = 1*A
-        
-    # discretization - zero hold.    
-    A_sys_d, B_d = zero_hold_dynamics(A_net, B_list, discretization)  
-    
-    if continuous_lqr: 
-        A_d = A_sys_d
-        lhs = A.T.dot(P) + P.dot(A) + P.dot(B).dot(K_total)
-    else: # solve discrete riccati for controller and discrete dynamics.
-        K_total = -sla.inv(R + B_d.T.dot(P).dot(B_d)).dot(
-            B_d.T).dot(P).dot(A_sys_d)
-        lhs = A_sys_d.T.dot(P).dot(A_sys_d) - P + A_sys_d.T.dot(
-            P).dot(B_d).dot(K_total)
-        A_d = A_sys_d + B_d.dot(K_total)
-
-    if continuous_lqr:
-        print('---- continuous time LQR.')
-        e,v = np.linalg.eig(A_net)
-        print(f'continuous time eigen values {(np.real(e))}')
-        
-    print('CARE/DARE equation is satisfied',np.allclose(lhs, -Q))  
-    # for i in range(player_num):
-    #     K_list.append(K_total[i*m:(i+1)*m, :])
-    e,v = np.linalg.eig(A_d) 
-    print(f'discretized A + BK eigen values {abs(e)}')
-    return A_d, B_d, K_total
-
-
-def sim_slung_dynamics(A, B_list, K_list, offset, time, x_0=None):
-    """ Simulate discretized slung dynamics.
-    
-    x_{t+1} = Ax_t + \sum_i B_i K_i x_t
-    
-    Args: 
-        - A: discretized time system dynamics.
-        - B_list: discretized controller dynamics.
-        - K_list: feedback controllers corresponding to B_list.
-        - offset: offset vector to x_t at every time step.
-        - time: total number of time steps.
-        - x_0: initial system state, defaults to random point. 
-    Returns:
-        - x_hist: a list of system states for the first time time steps.
-    """
-    n,_ = A.shape
-    if x_0 is None:
-        x_0 = 1 * np.random.rand(n)
-    x_hist = [x_0]
-    for t in range(time):
-        x_cur = x_hist[-1]
-        diff = x_cur - offset
-        x_next = A.dot(x_cur)
-        for i in range(len(K_list)):
-            x_next += B_list[i].dot(K_list[i]).dot(diff)
-        x_hist.append(1*x_next)
-    
-    return x_hist
+    n = len(_STATES_DICT)
+    l = len(states_list)
+    H = np.zeros((n, l))
+    for ind in range(l):
+        state_ind = _STATES_DICT[states_list[ind]]
+        H[state_ind, ind] = 1.
+    return H
 
 def plot_slung_states(x_hist, title):
-    """Plot the output of sim_slung_dynamics.
+    """Plot the sequence of slung states in x_hist.
     
     Args:
         - x_hist: a list of payload state history.

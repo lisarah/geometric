@@ -10,31 +10,29 @@ import numpy as np
 import numpy.linalg as la
 
 
-"""
-Return the rank of the input matrix.
-
+def rank(X, eps = 1e-14):
+    """ Return the rank of the input matrix.
+    
     Args:
         - X: matrix [ndarray].
     Returns:
         - rank: rank of X [int]. 
-"""    
-def rank(X, eps = 1e-14):
+    """
     m,n = X.shape
     if n == 0: 
         return 0
     else:
         return la.matrix_rank(X, eps)
     
-"""
-Return a matrix whose columns span the kernel of the input matrix.
-
+def ker(A, eps = 1e-14):
+    """ Return a matrix whose columns span the kernel of the input matrix.
+    
     Args:
         - A: matrix [ndarray].
     Returns:
         - ker: a matrix whose columns form an orthogonal basis for
           matrix A's kernel [ndarray].  
-"""
-def ker(A, eps = 1e-14):
+    """
     U,D, V = la.svd(A, full_matrices=True)
     r = rank(A, eps)
     m,n = V.shape
@@ -43,46 +41,43 @@ def ker(A, eps = 1e-14):
     else:
         return V[r:, :].T
     
-"""
-Return a matrix whose columns span the image of the input matrix.
-
+def image(X):
+    """ Return a matrix whose columns span the image of the input matrix.
+    
     Args: 
         - X: matrix [ndarray].
     Returns: 
         - image: a matrix whose columns form an orthogonal basis for
           matrix A's rank [ndarray].    
-"""
-def image(X):
+    """
     U,D,V = la.svd(X)
     r = rank(X)
     return U[:,:r]
 
-"""
-Return the dimension of the (A, B) controllable subspace.
-
+def control_subspace(A, B):
+    """ Return the dimension of the (A, B) controllable subspace.
+    
     Args: 
         - A: system dynamics matrix [ndarray].
         - B: control matrix [ndarray].
     Returns: 
         - control_subspace: rank of the controllable subspace [int].    
-"""
-def control_subspace(A, B):
+    """
     n,_ = A.shape
     controllable_list = [la.matrix_power(A, i).dot(B) for i in range(n)]
     controllability_matrix = np.concatenate(controllable_list, axis=1)
     return rank(controllability_matrix)
 
-""" 
-Add two subspaces (A, B) together.
-
+def sum(A, B):
+    """ Add two subspaces (A, B) together.
+    
     Args: 
         - A: a matrix whose columns span subspace A [ndarray].
         - B: a matrix whose columns span subspace B [ndarray].
     Returns:
         - sum: a matrix whose columns form the orthogonal basis for subspace
             addition A+B [ndarray]. 
-"""
-def sum(A, B):
+    """
     m,n = A.shape
     x,y = B.shape    
     if m != x:
@@ -90,52 +85,51 @@ def sum(A, B):
     T = np.hstack((A, B))
     return image(T)
 
-""" 
-Return the subspace A^{-1}(im(V)).
-
-Note that (A^{-1}im(V)) = ker((A^Tker(V.T)).T)
-
+def a_inv_v(A, V):
+    """ Return the subspace A^{-1}(im(V)).
+    
+    Note that (A^{-1}im(V)) = ker((A^Tker(V.T)).T)
+    
     Args:
         - A: matrix A [ndarray].
         - V: matrix V whose columns span subspace V [ndarray].
     Returns:
         - A_inv_V: a matrix whose columns span A^{-1}(im(V)) [ndarray].
-"""
-def a_inv_v(A, V):
+    """
     kerV = ker(V.T);
     AtV = A.T.dot(kerV)
     return ker(AtV.T)
 
-"""
-Return A intersect B. 
-
-Given matrix A and matrix B  return the intersection of their ranges by noting 
-that A intersect B = ker( (ker(A.T) + ker(B.T)).T )
+def intersect(A, B, verbose=False):
+    """ Return A intersect B. 
+    
+    Given matrix A and matrix B  return the intersection of their ranges by
+    noting that A intersect B = ker( (ker(A.T) + ker(B.T)).T )
 
     Args:
         - A: a matrix whose columns span the subspace A [ndarray]. 
         - B: a matrix whose columns span the subspace B [ndarray].
+        - verbose: True if print debugging info [bool].
     Returns:
         - intersect: a matrix whose columns span (A intersect B) [ndarray].
-"""
-def intersect(A,B):
+    """
     kerA = ker(A.T, 1e-14)
     kerB = ker(B.T, 1e-14)
-#    print("In intersect")
-#    print (kerA.shape);
-#    print (kerB.shape);
+    if verbose:
+        print("In intersect")
+        print (kerA.shape)
+        print (kerB.shape)
     return ker(np.hstack((kerA, kerB)).T, 1e-14)
 
-"""
-Check if subspace A is contained in subspace B.
-
+def contained(A,B):
+    """ Check if subspace A is contained in subspace B.
+    
     Args:
         - A: a matrix whose columns span the subspace A [ndarray]. 
         - B: a matrix whose columns span the subspace B [ndarray].
     Returns:
         - contained: True if A subseteq B, False otherwise [bool].
-"""
-def contained(A,B):
+    """
     cap = ker(B.T).T.dot(A)
     if np.allclose(cap, np.zeros(cap.shape)):   
         return True

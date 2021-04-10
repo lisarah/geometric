@@ -4,7 +4,7 @@ Created on Fri Mar 12 18:54:59 2021
 
 @author: Sarah Li
 """
-import isa as isa
+import disturbance_decouple as dd
 import lti as lti
 import subspace_linalg as subspace
 import numpy as np
@@ -40,7 +40,7 @@ Q = 8e2 * np.eye(n) if continuous_lqr else 8e2 * np.eye(n)
 
 
 # generate LQR controllers. 
-A_d, B_d, K_total = slung.lqr_and_discretize(
+A_d, B_d, K_total = lti.lqr_and_discretize(
     A, B_list, Q, R, discretization, continuous_lqr=continuous_lqr)
 
 x0 = np.random.rand(n)
@@ -68,7 +68,7 @@ H = np.zeros((n, len(observed_states))) # decouple z and pitch and roll
 for i in range(len(observed_states)):
     H[observed_states[i], i] = 1.
     
-V = isa.ISA(subspace.ker(H.T), A_d, B_d)
+V = dd.isa(subspace.ker(H.T), A_d, B_d)
 print(np.round(V,2))
 
 # add random noise in the north and east velocity directions
