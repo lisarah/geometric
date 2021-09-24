@@ -49,11 +49,11 @@ offset = np.zeros(n)
 title = 'continuous LQR feedback'
 B_zero = np.zeros(B_d.shape)
 F_zero = np.zeros((m,n))
-x_hist = lti.run_dynamics(A_d, B_zero, None, K_total, Time, x0)
+x_hist, _ = lti.run_dynamics(A_d, B_zero, None, K_total, Time, x0)
 slung.plot_slung_states(x_hist, title +' no DD no noise')
 
 # add random noise in the north and east velocity directions
-x_hist = lti.run_dynamics(A_d, B_zero, E, K_total, Time, x_init=x0,
+x_hist, _ = lti.run_dynamics(A_d, B_zero, E, K_total, Time, x_init=x0,
                           noise=True)
 slung.plot_slung_states(x_hist, title +' no DD with noise')
 
@@ -86,11 +86,11 @@ F_zero = np.zeros((m,n))
 A_cl = A_lqr + B.dot(F_k)
 A_cl_d, _ = lti.zero_hold_dynamics(A_cl, [B_zero], delta_t=1e-1)
 
-x_hist = lti.run_dynamics(A_cl_d, B_zero, None, K_total, Time, x0)
+x_hist, _ = lti.run_dynamics(A_cl_d, B_zero, None, K_total, Time, x0)
 slung.plot_slung_states(x_hist, title +' with DD no noise')
 
 # add random noise in the north and east velocity directions
-x_hist = lti.run_dynamics(A_cl_d, B_zero, E, K_total, Time, x_init=x0,
+x_hist, _  = lti.run_dynamics(A_cl_d, B_zero, E, K_total, Time, x_init=x0,
                           noise=True)
 slung.plot_slung_states(x_hist, title +' with DD with noise')
 

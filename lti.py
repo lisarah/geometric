@@ -32,13 +32,16 @@ def run_dynamics(A, B, E, F, T, offset=None, x_init=None, noise=False,
     if noise:
         _,K = E.shape
     x_hist = [x_init]
+    control_hist = [B.dot(F).dot(x_init - offset)]
     for t in range(T):
         cur_x = x_hist[-1]    
-        next_x = A.dot(cur_x) + B.dot(F).dot(cur_x - offset) 
+        next_x = A.dot(cur_x) + control_hist[-1]
+        # print(B.dot(F).dot(next_x - offset))
         if noise:
             next_x += noise_mag * E.dot(np.random.rand(K))
         x_hist.append(next_x)
-    return x_hist
+        control_hist.append(B.dot(F).dot(next_x - offset))
+    return x_hist, control_hist
 
 def zero_hold_dynamics(A, B_list, delta_t =1e-1):
     """ Generate zero hold discretized (A, B)'s from continuous time dynamics.
@@ -55,7 +58,10 @@ def zero_hold_dynamics(A, B_list, delta_t =1e-1):
         - A_d: discretized zero-hold system dynamics.
         - B_d_list: discretized zero-hold controller dynamics
     """
-    B_total = np.concatenate(B_list, axis = 1)
+    if type(B_list) is list:
+        B_total = np.concatenate(B_list, axis = 1)
+    else:
+        B_total = B_list
     n, m_total = B_total.shape
     exponent_up = delta_t * np.concatenate((A,B_total), axis=1)
     exponent_low = delta_t * np.concatenate(
