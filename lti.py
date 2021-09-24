@@ -9,7 +9,8 @@ import cvxpy as cvx
 import scipy.linalg as sla
 
 
-def run_dynamics(A, B, E, F, T, offset=None, x_init=None, noise=False):
+def run_dynamics(A, B, E, F, T, offset=None, x_init=None, noise=False, 
+                 noise_mag=1e-1):
     """ Run LTI dynamics for T time steps.
     The dynamics, given random initial conditions and random noise experienced 
     by noisy_player.
@@ -35,8 +36,7 @@ def run_dynamics(A, B, E, F, T, offset=None, x_init=None, noise=False):
         cur_x = x_hist[-1]    
         next_x = A.dot(cur_x) + B.dot(F).dot(cur_x - offset) 
         if noise:
-            noise_multiplier = 1e-1
-            next_x += noise_multiplier * E.dot(np.random.rand(K))
+            next_x += noise_mag * E.dot(np.random.rand(K))
         x_hist.append(next_x)
     return x_hist
 

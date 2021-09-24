@@ -16,6 +16,7 @@ import disturbance_decouple as dd
 plt.close('all')
 discretization = 1e-2 
 Time = int(200)
+noise_mag = 1e1
 
 # payload definition
 mass = 1 # kg.
@@ -41,15 +42,19 @@ _,v_col = V.shape
 
 #--------------------- solve BMI -----------------------#
 F_k, alpha_k, P_k, eig_history = dd.solve_bmi(A, B, alpha_0, F_0, P_0, V,
-                                              verbose=True)
-
-F_k, alpha_k, P_k, eig_history = dd.solve_bmi_2(A, B, alpha_0, F_k, P_k, V,
-                                                verbose=True)
+                                              verbose=False)
+plt.figure()
 plt.plot(eig_history)
-# plt.title('Maximum real part of eig(A+BF) ')
-plt.title('2 norm of F')
+plt.title('Maximum real part of eig(A+BF) ')
 plt.grid()
 plt.show()
+# F_k, alpha_k, P_k, eig_history = dd.solve_bmi_2(A, B, alpha_0, F_k, P_k, V,
+#                                                 verbose=False)
+# plt.figure()
+# plt.plot(eig_history)
+# plt.title('2 norm of F')
+# plt.grid()
+# plt.show()
 
 # final result should give the fastest convergence rate of A+BF that's also DD
 A_cl = A + B.dot(F_k)
@@ -64,12 +69,43 @@ A_d, _ = lti.zero_hold_dynamics(A_cl, [B_empty], delta_t=1e-1)
 
 # plot the discrete LQR with no noise
 title = 'BMI derived DD controller and no noise'
-x_hist = lti.run_dynamics(A_d, B_empty, E, F_empty, Time, x_init=x0)
+x_hist = lti.run_dynamics(A_d, B_empty, E, F_empty, Time, x_init=x0, noise_mag=noise_mag)
 slung.plot_slung_states(x_hist, title)
 
 # add random noise in the north and east velocity directions
 title = 'BMI derived DD controller WITH noise'
 x_hist = lti.run_dynamics(A_d, B_empty, E, F_empty, Time, x_init=x0,
-                          noise=True)
+                          noise=True, noise_mag=noise_mag)
 slung.plot_slung_states(x_hist, title)
 
+
+#--------------------- solve without disturbance decoupling -----------------------#
+F_k, alpha_k, P_k, eig_history = dd.solve_bmi(A, B, alpha_0, F_0, P_0, V=None,
+                                              verbose=False)
+plt.figure()
+plt.plot(eig_history)
+plt.title('Maximum real part of eig(A+BF) ')
+plt.grid()
+plt.show()
+
+A_cl = A + B.dot(F_k)
+B_empty = np.zeros((n,m))
+F_empty = np.zeros((m,n))
+e, v = sla.eig(A + B.dot(F_k))
+print(f"Eigen-values of closed loop system = {e}")
+
+x0 = np.random.rand(n)
+E = slung.state_matrix(['north velocity', 'east velocity'])
+A_d, _ = lti.zero_hold_dynamics(A_cl, [B_empty], delta_t=1e-1)
+
+# plot the discrete LQR with no noise
+title = 'BMI no DD and no noise'
+x_hist = lti.run_dynamics(A_d, B_empty, E, F_empty, Time, x_init=x0, 
+                          noise_mag=noise_mag)
+slung.plot_slung_states(x_hist, title)
+
+# add random noise in the north and east velocity directions
+title = 'BMI no DD WITH noise'
+x_hist = lti.run_dynamics(A_d, B_empty, E, F_empty, Time, x_init=x0,
+                          noise=True, noise_mag=noise_mag)
+slung.plot_slung_states(x_hist, title)

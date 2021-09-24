@@ -33,7 +33,7 @@ def slung_dynamics_gen(mass, J, g_list):
         dot_x = Ax + Bu
     Dynamic variables (x):
         - (n, e, d): paylod's Center of gravity (CoG) in the NED frame.
-        - (phi, theta, psi): Pitch, row, yaw Euler angles.
+        - (phi, theta, psi): Pitch, roll, yaw Euler angles.
         - (v_n, v_e, v_d): Velocities of payload's CoG in NED axis directions.
         - (p, q, r): Angular velocity of payload's Euler angles. 
     

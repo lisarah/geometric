@@ -47,10 +47,11 @@ x0 = np.random.rand(n)
 offset = np.zeros(n)
  
 # plot discretized LQR result with no noise
-title = 'discretized LQR feedback'
+title = 'continuous ' if continuous_lqr else 'discrete '
+title += 'LQR feedback'
 B_zero = np.zeros(B_d.shape)
 x_hist = lti.run_dynamics(A_d, B_zero, None, K_total, Time, x0)
-slung.plot_slung_states(x_hist, title)
+slung.plot_slung_states(x_hist, title +' no DD no noise')
 
 #-------------- design disturbance decoupling controller -----------------#
 # H is the observation matrix
@@ -77,10 +78,9 @@ E = np.zeros((n, 2))
 E[6, 0] = 1. # north velocity
 E[7, 1] = 1. # east velocity
 
-title = 'discretized LQR feedback with noise'
 x_hist = lti.run_dynamics(A_d ,B_d, E, np.zeros(K_total.shape), Time, offset, 
                           x0, noise=True)
-slung.plot_slung_states(x_hist, title)
+slung.plot_slung_states(x_hist, title + ' no DD with noise')
 
 # check if noise is contained in V.
 print(f'range of E is contained in V {subspace.contained(E, V)}')
@@ -112,15 +112,15 @@ print(f'DD condition is satisfied {np.allclose(lhs,rhs)}')
 e, v = np.linalg.eig(A_d + B_d.dot(F_opt))
 print(f'eign values of DD dynamics:{abs(e)}')
 # plot the discrete LQR with no noise
-title = 'discretized LQR feedback with DD controller and no noise'
+# title = 'discretized LQR feedback with DD controller and no noise'
 x_hist = lti.run_dynamics(A_d, B_d, None, F_opt, Time, x0)
-slung.plot_slung_states(x_hist, title)
+slung.plot_slung_states(x_hist, title + ' with DD no noise')
 
 
 # add random noise in the north and east velocity directions
-title = 'discretized LQR feedback with DD controller and noise'
+# title = 'discretized LQR feedback with DD controller and noise'
 x_hist = lti.run_dynamics(A_d, B_d, E, F_opt, Time, offset, x0, noise=True)
-slung.plot_slung_states(x_hist, title)
+slung.plot_slung_states(x_hist, title + ' with DD with noise')
 
 # check that the controller F is not unique on the range(V).
 # F_1 = np.zeros((12,12))

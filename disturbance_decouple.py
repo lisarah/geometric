@@ -83,6 +83,8 @@ def disturbance_decoupling(H, A, B, return_alpha=False, verbose=False):
 def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
     """ Solve the stabilizing BMI with disturbance decoupling.
     
+    Set V = None for standard output feedback control
+    
     Args:
         - A: system dynamics [ndarray, nxn].
         - B: controller dynamics [ndarray, nxm].
@@ -100,11 +102,13 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
         - eig_history: a list of the alpha value derived over the algorithm.
     """
     m,n  = B.shape
-    v_row, v_col = V.shape
-    VB = np.concatenate((V,B), axis=1)
+    if V is not None:
+       v_row, v_col = V.shape
+       VB = np.concatenate((V,B), axis=1)
+       XS = cvx.Variable((v_col + m, v_col))
     F = cvx.Variable((m, n))
     P = cvx.Variable((n,n), PSD=True)
-    XS = cvx.Variable((v_col + m, v_col))
+    
     alpha = cvx.Variable()
     a_I = alpha * np.eye(n)
     rho = 1e-2
@@ -118,10 +122,12 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
     P_k = P_0
     for k in range(T):
         e, v = sla.eig(A + B.dot(F_k))
-        if verbose:
-            print(f"Eigen-values = {np.max(np.real(e))}")
-            print(f"alpha =  {alpha.value}")
-            print(f"--------- {k} -----------")
+        # print(e + alpha.value)
+        # if verbose:
+            # print(f'\r eigen values = {np.round(e + alpha.value, 2)}', end = '         ')
+            # print(f"Eigen-values = {np.max(np.real(e))}")
+            # print(f"alpha =  {alpha.value}")
+            # print(f"--------- {k} -----------")
         eig_history.append(np.max(np.real(e)))
         H_k = H(alpha_k, F_k, P_k)
         H_var = H_k @ (2 * (A + a_I + B@F - P) - H_k)
@@ -138,7 +144,9 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
         F_k = F.value
         P_k = P.value
         alpha_k = alpha.value
-
+        pe, pv = sla.eig(P_k)
+        if verbose:
+            print(f'\r eigen values = {np.round(e + alpha.value, 2)}, P eigs = {np.round(pe, 2)}', end = '         ')
     if V is not None and verbose==True:    
         # check disturbance decoupling is satisfied
         XS_array = XS.value
@@ -148,75 +156,6 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
         print(f'DD condition is satisfied {np.allclose(lhs,rhs)}')
     
     return F_k, alpha_k, P_k, eig_history
-
-def solve_bmi_2(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
-    """ Solve the stabilizing BMI with disturbance decoupling.
-    
-    Args:
-        - A: system dynamics [ndarray, nxn].
-        - B: controller dynamics [ndarray, nxm].
-        - F_0: initial controller, must satisfy disturbance decoupling,
-            [ndarray, mxn].
-        - alpha_0: initial Lyapunov function bound.
-        - P_0: initial Lyapunov function.
-        - V: largest invariant set for disturbanc decoupling [ndarray, nxk].
-        - rho: penalty factor for optimization during iterative process[float].
-        - verbose: True if print output algorithm updates.
-    Returns:
-        - F_k: the optimal controller that solves the BMI [ndarray, mxn].
-        - alpha_k: the optimal alpha value [float].
-        - P_k: the Lyapunov potential matrix [ndarray, nxn].
-        - eig_history: a list of the alpha value derived over the algorithm.
-    """
-    m,n  = B.shape
-    v_row, v_col = V.shape
-    VB = np.concatenate((V,B), axis=1)
-    F = cvx.Variable((m, n))
-    P = cvx.Variable((n,n), PSD=True)
-    XS = cvx.Variable((v_col + m, v_col))
-    alpha = 0.2
-    a_I = alpha * np.eye(n)
-    rho = 1e-2
-    eig_history = []
-    T = 50
-    def H(F, P):
-        return  A + a_I + B.dot(F) - P
-    
-    F_k = F_0
-    P_k = P_0
-    for k in range(T):
-        print(F_k)
-        e, v = sla.eig(A + B.dot(F_k))
-        obj = np.linalg.norm(F_k,2)
-        if verbose:
-            print(f"Eigen-values = {obj}")
-            print(f"--------- {k} -----------")
-        eig_history.append(obj)
-        H_k = H(F_k, P_k)
-        H_var = H_k.T @ (2 * (A + a_I + B@F - P) - H_k)
-        lmi_block = cvx.bmat([[H_var, (A + B@F + a_I  + P).T],
-                              [A + B@F + a_I  + P,  np.eye(n)]])
-        obj = cvx.Maximize(-2*cvx.norm(F, 2) 
-                           - rho/2 * cvx.power(cvx.norm(F-F_k, 'fro'),2) 
-                           - rho/2 * cvx.power(cvx.norm(P - P_k, 'fro'), 2) )
-        constraint = [lmi_block >> 0] # Lyapunov stability constraint.
-        if V is not None: # solve with disturbance decoupling
-            constraint.append(VB@XS == A.dot(V))
-            constraint.append(XS[v_col:, :] == -F@V)
-        k_iteration = cvx.Problem(obj, constraint)
-        k_iteration.solve(solver=cvx.MOSEK, verbose=False)
-        F_k = F.value
-        P_k = P.value
-
-    if V is not None and verbose==True:    
-        # check disturbance decoupling is satisfied
-        XS_array = XS.value
-        X_0 = XS_array[:v_col, :]
-        lhs = V.dot(X_0) - B.dot(F_k).dot(V)
-        rhs = A.dot(V)
-        print(f'DD condition is satisfied {np.allclose(lhs,rhs)}')
-    
-    return F_k, 0,  P_k, eig_history
 # np.random.seed(122323)
 # N = 10
 # M = 3
