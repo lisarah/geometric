@@ -89,7 +89,7 @@ def state_matrix(states_list):
         H[state_ind, ind] = 1.
     return H
 
-def plot_slung_states(x_hist, title):
+def plot_slung_states(x_hist, title, x_hist_compare=None):
     """Plot the sequence of slung states in x_hist.
     
     Args:
@@ -98,9 +98,14 @@ def plot_slung_states(x_hist, title):
     """
     labels = ['north', 'east', 'down', 'phi', 'theta', 'psi']
     history = np.array(x_hist)
+    if x_hist_compare is not None:
+        history_compare = np.array(x_hist_compare)
     plt.figure()
     plt.title(title)
     [plt.plot(history[:,i], label=labels[i]) for i in range(len(labels))]
+    if x_hist_compare is not None:
+        [plt.plot(history_compare[:,i], color='C'+str(i), linestyle=':', label=labels[i]+'with dd') 
+         for i in range(len(labels))]
     plt.grid()
     plt.legend()
     plt.show()

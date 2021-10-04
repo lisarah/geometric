@@ -74,9 +74,19 @@ for k in range(T):
     eig_history.append(np.max(np.real(e)))
 
 plt.plot(eig_history)
-plt.title('Maximum real part of eig(A+BFC) ')
+plt.title('Maximum real part of eig(A-BFC) ')
 plt.grid()
 plt.show()
+
+F_opt = F.value
+
+e, v = np.linalg.eig(A_d + B_d.dot(F_opt))
+print(f'eign values of DD dynamics:{abs(e)}')
+# plot the discrete LQR with no noise
+# title = 'discretized LQR feedback with DD controller and no noise'
+x_hist = lti.run_dynamics(A_d, B_d, None, F_opt, Time, x0)
+slung.plot_slung_states(x_hist, title + ' with DD no noise')
+
 
 # final result should give the fastest convergence rate of A+BFC
 # e, v = sla.eig(A + B.dot(F_res).dot(C))

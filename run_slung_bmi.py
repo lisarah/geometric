@@ -36,11 +36,12 @@ H = slung.state_matrix(['down', 'pitch', 'roll'])
 #--------------------- solve disturbance decoupling -----------------------#
 V, F_0, alpha_0, P_0 = dd.disturbance_decoupling(H, A, B,return_alpha=True)
 #--------------------- solve BMI -----------------------#
-F_k, alpha_k, P_k, eig_history = dd.solve_bmi(A, B, alpha_0, F_0, P_0, V,
+F_k, alpha_k, P_k, eig_history_with_dd = dd.solve_bmi(A, B, alpha_0, F_0, P_0, V,
                                               verbose=False)
 plt.figure()
-plt.plot(eig_history)
+plt.plot(eig_history_with_dd)
 plt.title('Maximum real part of eig(A+BF) ')
+plt.legend()
 plt.grid()
 plt.show()
 # F_k, alpha_k, P_k, eig_history = dd.solve_bmi_2(A, B, alpha_0, F_k, P_k, V,
@@ -69,18 +70,21 @@ slung.plot_slung_states(control_hist, title +' control vals')
 
 # add random noise in the north and east velocity directions
 title = 'BMI derived DD controller WITH noise'
-x_hist, control_hist = lti.run_dynamics(A_d, B_d, E, F_k, Time, 
+x_hist_dd, control_hist_dd = lti.run_dynamics(A_d, B_d, E, F_k, Time, 
                           x_init=x0, noise=True, noise_mag=noise_mag)
-slung.plot_slung_states(x_hist, title)
-slung.plot_slung_states(control_hist, title +' control vals')
+slung.plot_slung_states(x_hist_dd, title)
+slung.plot_slung_states(control_hist_dd, title +' control vals')
 
 
 #--------------------- solve without disturbance decoupling -----------------------#
 F_k, alpha_k, P_k, eig_history = dd.solve_bmi(A, B, alpha_0, F_0, P_0, V=None,
                                               verbose=False)
+# 'linear', 'log', 'symlog', 'logit', 'function', 'functionlog'
 plt.figure()
-plt.plot(eig_history)
+plt.plot(eig_history_with_dd, label='with disturbance decoupling')
+plt.plot(eig_history, label='regular output feedback')
 plt.title('Maximum real part of eig(A+BF) ')
+plt.legend()
 plt.grid()
 plt.show()
 
@@ -105,5 +109,5 @@ slung.plot_slung_states(control_hist, title +' control vals')
 title = 'BMI no DD WITH noise'
 x_hist, control_hist = lti.run_dynamics(A_d, B_d, E, F_k, Time,
                             x_init=x0, noise=True, noise_mag=noise_mag)
-slung.plot_slung_states(x_hist, title)
+slung.plot_slung_states(x_hist, title, x_hist_dd)
 slung.plot_slung_states(control_hist, title +' control vals')
