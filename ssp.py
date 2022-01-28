@@ -70,7 +70,7 @@ def dijkstra(G,s,t, cost):
         path.append(prevNode[curNode]);
     
     path.reverse();
-    return path, minCost;
+    return path, None #, minCost;
         
         
 def augment(s,t,path, flow, B):

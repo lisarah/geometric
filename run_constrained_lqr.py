@@ -58,7 +58,7 @@ def project_to_dd(A, B, V, P, R):
 # LQR parameter definition
 R = 1e0 * np.eye(m)
 R_inv = sla.inv(R)
-Q = 8e0 * np.eye(n) 
+Q = 8e1 * np.eye(n) 
 P_k = sla.solve_continuous_are(A, B, Q, R)
 # F_k = -R_inv.dot(B.T).dot(P_k)
 # e, v = sla.eig(A + B.dot(F_k))
@@ -74,18 +74,18 @@ eig_hist = [np.max(np.real(e))]
 print(f'unsolved LQR eigenvalues {eig_hist[0]}')
 
 total_steps = 200
-progress_step = total_steps/5
+progress_step = total_steps/4
 for k in range(total_steps):
     if k%progress_step == progress_step-1:
         print(f'{k}/{total_steps}')
         P_k = project_to_dd(A, B, V, P_k, R)
         # e, v = sla.eig(A - B.dot(R_inv).dot(B.T).dot(P_k))
         # print(np.real(e))
-        norm_hist.append(np.linalg.norm(P_k, 'fro'))
-        e, v = sla.eig(A - B.dot(R_inv).dot(B.T).dot(P_k))
-        eig_hist.append(np.max(np.real(e)))
-        print(np.real(e))
-        # print(np.linalg.norm(P_k, 'fro'))
+        # norm_hist.append(np.linalg.norm(P_grad, 'fro'))
+        # e, v = sla.eig(A - B.dot(R_inv).dot(B.T).dot(P_k))
+        # eig_hist.append(np.max(np.real(e)))
+        P_grad = A.T.dot(P_k) + P_k.dot(A) - P_k.dot(B).dot(R_inv).dot(B.T).dot(P_k) + Q
+        print(np.linalg.norm(P_grad, 'fro'))
     P_grad = A.T.dot(P_k) + P_k.dot(A) - P_k.dot(B).dot(R_inv).dot(B.T).dot(P_k) + Q
     # method 1: project and then gradient descent
     # P_proj_grad = P_grad
@@ -95,7 +95,7 @@ for k in range(total_steps):
     P_k =  P_k + P_grad*1e-3
     # P_k = project_to_dd(A, B, V, P_k, R)
     # P_k = project_to_dd(A, B, V, P_k, R)
-    norm_hist.append(np.linalg.norm(P_k, 'fro'))
+    norm_hist.append(np.linalg.norm(P_grad, 'fro'))
     e, v = sla.eig(A - B.dot(R_inv).dot(B.T).dot(P_k))
     eig_hist.append(np.max(np.real(e)))
     

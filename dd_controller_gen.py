@@ -8,7 +8,7 @@ import numpy as np
 import scipy.linalg as sla
 import matplotlib.pyplot as plt
 
-import dd
+import disturbance_decouple as dd
 import subspace_linalg as slin
 
 

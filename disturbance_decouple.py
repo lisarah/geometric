@@ -84,7 +84,7 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
     """ Solve the stabilizing BMI with disturbance decoupling.
     
     Set V = None for standard output feedback control
-    
+    NOTE: THIS DOESN'T INCLUDE MATRIX C! NEED TO IMPLEMENT
     Args:
         - A: system dynamics [ndarray, nxn].
         - B: controller dynamics [ndarray, nxm].
@@ -101,17 +101,18 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
         - P_k: the Lyapunov potential matrix [ndarray, nxn].
         - eig_history: a list of the alpha value derived over the algorithm.
     """
-    m,n  = B.shape
+    n, m  = B.shape
+    # CVX Variables 
     if V is not None:
        v_row, v_col = V.shape
        VB = np.concatenate((V,B), axis=1)
        XS = cvx.Variable((v_col + m, v_col))
     F = cvx.Variable((m, n))
     P = cvx.Variable((n,n), PSD=True)
-    
     alpha = cvx.Variable()
     a_I = alpha * np.eye(n)
-    rho = 1e-2
+    
+    
     eig_history = []
     T = 50
     def H(alpha, F, P):
@@ -130,7 +131,10 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
             # print(f"--------- {k} -----------")
         eig_history.append(np.max(np.real(e)))
         H_k = H(alpha_k, F_k, P_k)
+        # print(f'shapes H_k {H_k.shape}, A {A.shape}, B {B.shape}, F {F.shape}, F_0 {F_0.shape}')
         H_var = H_k @ (2 * (A + a_I + B@F - P) - H_k)
+        # print(f'shapes H_var {H_var.shape}, A {A.shape}, B {B.shape}, F {F.shape}, a_I {a_I.shape}, P {P.shape}')
+        
         lmi_block = cvx.bmat([[H_var, (A + B@F + a_I  + P).T],
                               [A + B@F + a_I  + P,  np.eye(n)]])
         obj = cvx.Maximize(alpha-rho/2 * cvx.power(cvx.norm(F-F_k, 'fro'),2) 
@@ -145,7 +149,10 @@ def solve_bmi(A, B, alpha_0, F_0, P_0, V = None, rho = 1e-2, verbose=False):
         P_k = P.value
         alpha_k = alpha.value
         pe, pv = sla.eig(P_k)
-        if verbose:
+        ae, av = sla.eig(A +  B.dot(F_k))
+        if verbose:            
+            # print(f'\r eigen values = {np.round(ae, 2)}, alpha = {np.round(alpha_k, 2)}', end = '         ')
+
             print(f'\r eigen values = {np.round(e + alpha.value, 2)}, P eigs = {np.round(pe, 2)}', end = '         ')
     if V is not None and verbose==True:    
         # check disturbance decoupling is satisfied
