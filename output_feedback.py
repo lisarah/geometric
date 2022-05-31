@@ -2,6 +2,9 @@
 """
 Created on Tue May 31 09:57:25 2022
 
+Generates a stable feedback controller. See paper for reference. 
+LMI numerical solution for output feedback stabilization
+https://ieeexplore.ieee.org/abstract/document/763227 
 @author: Sarah Li
 """
 import numpy as np
